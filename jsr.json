@@ -1,0 +1,14 @@
+{
+  "name": "@valentinkolb/ssr",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bun": "./src/bun.ts",
+    "./elysia": "./src/elysia.ts",
+    "./hono": "./src/hono.ts"
+  },
+  "publish": {
+    "include": ["jsr.json", "LICENSE", "README.md", "src/**/*.ts"],
+    "exclude": ["src/**/*.test.ts"]
+  }
+}
