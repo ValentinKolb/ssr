@@ -1,0 +1,29 @@
+name: Publish
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Update jsr.json version
+        run: |
+          sed -i 's/"version": "0.0.0"/"version": "'${{ steps.version.outputs.version }}'"/' jsr.json
+          cat jsr.json
+
+      - name: Publish package
+        run: npx jsr publish
