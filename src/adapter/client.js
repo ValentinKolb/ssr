@@ -49,7 +49,8 @@ if (!window.__ssr_reload) {
           settings.highlightIslands
             ? `
           solid-island {
-            outline: 1px solid #22c55e !important;
+            display: block;
+            box-shadow: 0 0 0 1px #22c55e !important;
             position: relative;
           }
           solid-island::before {
@@ -71,7 +72,8 @@ if (!window.__ssr_reload) {
           settings.highlightClients
             ? `
           solid-client {
-            outline: 1px solid #3b82f6 !important;
+            display: block;
+            box-shadow: 0 0 0 1px #3b82f6 !important;
             position: relative;
           }
           solid-client::before {
