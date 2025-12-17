@@ -10,18 +10,21 @@ The entire framework is roughly 750 lines of code with zero runtime dependencies
 
 ## Features
 
-- **Minimal footprint**: Under 800 lines of core code and seroval as only dependency beside solid and your chosen web framework.
-- **Islands architecture**: `*.island.tsx` for hydrated components, `*.client.tsx` for client-only - thats it
+- **Islands architecture**: `*.island.tsx` for hydrated components, `*.client.tsx` for client-only
 - **Framework agnostic**: Works with Bun's native server, **Elysia**, or **Hono**
 - **Fast**: Built on Bun's runtime with optimized bundling
 - **Dev experience**: Hot reload, source maps, and TypeScript support
+
+## Example
+
+See [github.com/valentinkolb/ssr-example](https://github.com/valentinkolb/ssr-example) for a complete working example with all three adapters.
 
 ## Quick Start
 
 Install the package:
 
 ```bash
-bun add @valentinkolb/ssr@jsr solid-js
+bun add @valentinkolb/ssr solid-js
 ```
 
 Create a configuration file (optional - has sensible defaults):
