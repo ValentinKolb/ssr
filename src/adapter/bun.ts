@@ -27,17 +27,16 @@ type Routes = Record<string, RouteHandler>;
  * ```
  */
 export const routes = (config: SsrConfig): Routes => {
-  const { dev, autoRefresh } = config;
+  const { dev } = config;
   const ssrDir = getSsrDir(dev);
 
-  const devRoutes: Routes =
-    dev && autoRefresh
-      ? {
-          "/_ssr/_reload": () => createReloadResponse(),
-          "/_ssr/_ping": () => new Response("ok"),
-          "/_ssr/_client.js": () => createClientResponse(),
-        }
-      : {};
+  const devRoutes: Routes = dev
+    ? {
+        "/_ssr/_reload": () => createReloadResponse(),
+        "/_ssr/_ping": () => new Response("ok"),
+        "/_ssr/_client.js": () => createClientResponse(),
+      }
+    : {};
 
   return {
     ...devRoutes,

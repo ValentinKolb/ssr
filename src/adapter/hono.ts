@@ -21,13 +21,13 @@ import {
  * ```
  */
 export const routes = (config: SsrConfig) => {
-  const { dev, autoRefresh } = config;
+  const { dev } = config;
   const ssrDir = getSsrDir(dev);
 
   const app = new Hono();
 
   // Dev mode endpoints
-  if (dev && autoRefresh) {
+  if (dev) {
     app.get("/_client.js", () => createClientResponse());
     app.get("/_reload", () => createReloadResponse());
     app.get("/_ping", (c) => c.text("ok"));

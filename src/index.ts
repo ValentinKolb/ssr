@@ -21,8 +21,6 @@ export type SsrOptions<T extends object = object> = {
   dev?: boolean;
   /** Enable verbose logging (default: true in prod, false in dev) */
   verbose?: boolean;
-  /** Enable auto page refresh in dev mode (default: true) */
-  autoRefresh?: boolean;
   /** HTML template function (optional, has default) */
   template?: (
     ctx: {
@@ -35,7 +33,6 @@ export type SsrOptions<T extends object = object> = {
 export type SsrConfig = {
   dev: boolean;
   verbose?: boolean;
-  autoRefresh: boolean;
 };
 
 type HtmlFn<T extends object> = (
@@ -85,7 +82,7 @@ export type SsrResult<T extends object> = {
 export const createConfig = <T extends object = object>(
   options: SsrOptions<T> = {},
 ): SsrResult<T> => {
-  const { dev = false, verbose, autoRefresh = true, template } = options;
+  const { dev = false, verbose, template } = options;
 
   // Default template if none provided
   const htmlTemplate =
@@ -108,7 +105,6 @@ export const createConfig = <T extends object = object>(
   const config: SsrConfig = {
     dev,
     verbose,
-    autoRefresh,
   };
 
   // HTML renderer
@@ -116,21 +112,24 @@ export const createConfig = <T extends object = object>(
     const body = renderToString(() => element);
 
     // Extract island and client component IDs from rendered HTML
-    const islandIds = [
-      ...new Set(
-        [...body.matchAll(/<solid-(island|client) data-id="([^"]+)"/g)].map(
-          (m) => m[2],
-        ),
-      ),
+    const matches = [
+      ...body.matchAll(/<solid-(island|client) data-id="([^"]+)"/g),
     ];
+    const islands = [
+      ...new Set(matches.filter((m) => m[1] === "island").map((m) => m[2])),
+    ];
+    const clients = [
+      ...new Set(matches.filter((m) => m[1] === "client").map((m) => m[2])),
+    ];
+    const islandIds = [...islands, ...clients];
 
     // Component scripts
     let scripts = islandIds
       .map((id) => `<script type="module" src="/_ssr/${id}.js"></script>`)
       .join("\n");
 
-    // Add dev reload script in dev mode (if autoRefresh enabled)
-    if (dev && autoRefresh) {
+    // Add dev tools script in dev mode
+    if (dev) {
       scripts += `\n<script type="module" src="/_ssr/_client.js"></script>`;
     }
 
@@ -186,7 +185,7 @@ export const createConfig = <T extends object = object>(
           // Issue: https://github.com/oven-sh/bun/issues/4689
           const contents = await import(`${path}?`, { with: { type: "text" } });
           return {
-            contents: await transform(contents.default, path, "ssr"),
+            contents: await transform(contents.default, path, "ssr", dev),
             loader: "js",
           };
         });

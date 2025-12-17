@@ -23,7 +23,7 @@ import {
  * ```
  */
 export const routes = (config: SsrConfig) => {
-  const { dev, autoRefresh } = config;
+  const { dev } = config;
   const ssrDir = getSsrDir(dev);
 
   return new Elysia({ name: "ssr" })
@@ -34,13 +34,7 @@ export const routes = (config: SsrConfig) => {
         headers: { "Cache-Control": getCacheHeaders(dev) },
       }),
     )
-    .get("/_ssr/_reload", () =>
-      dev && autoRefresh ? createReloadResponse() : notFound(),
-    )
-    .get("/_ssr/_ping", () =>
-      dev && autoRefresh ? new Response("ok") : notFound(),
-    )
-    .get("/_ssr/_client.js", () =>
-      dev && autoRefresh ? createClientResponse() : notFound(),
-    );
+    .get("/_ssr/_reload", () => (dev ? createReloadResponse() : notFound()))
+    .get("/_ssr/_ping", () => (dev ? new Response("ok") : notFound()))
+    .get("/_ssr/_client.js", () => (dev ? createClientResponse() : notFound()));
 };
