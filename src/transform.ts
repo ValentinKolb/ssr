@@ -35,7 +35,7 @@ const attr = (name: string, value: any) =>
 
 type ComponentType = "island" | "client";
 
-const componentWrapperPlugin = (filename: string) => ({
+const componentWrapperPlugin = (filename: string, dev: boolean) => ({
   visitor: {
     Program(programPath: any) {
       const componentImports = new Map<
@@ -109,17 +109,23 @@ const componentWrapperPlugin = (filename: string) => ({
           // For islands: wrap the component, for client: empty wrapper (no SSR)
           const children = component.type === "island" ? [path.node] : [];
 
-          const wrapper = jsx(
-            wrapperTag,
-            [
-              attr("data-id", id),
-              attr(
-                "data-props",
-                t.callExpression(t.identifier("__seroval_serialize"), [props]),
-              ),
-            ],
-            children,
-          );
+          // Extract filename from path (e.g., "Counter.island.tsx")
+          const file = component.path.split("/").pop() || "";
+
+          const attrs = [
+            attr("data-id", id),
+            attr(
+              "data-props",
+              t.callExpression(t.identifier("__seroval_serialize"), [props]),
+            ),
+          ];
+
+          // Add file attribute in dev mode
+          if (dev) {
+            attrs.push(attr("data-file", file));
+          }
+
+          const wrapper = jsx(wrapperTag, attrs, children);
 
           path.replaceWith(wrapper);
           path.skip();
@@ -137,6 +143,7 @@ export const transform = async (
   source: string,
   filename: string,
   mode: "ssr" | "dom",
+  dev: boolean = false,
 ): Promise<string> => {
   let code = source;
 
@@ -144,7 +151,7 @@ export const transform = async (
     const result = await transformAsync(code, {
       filename,
       parserOpts: { plugins: ["jsx", "typescript"] },
-      plugins: [() => componentWrapperPlugin(filename)],
+      plugins: [() => componentWrapperPlugin(filename, dev)],
     });
     code = result?.code || code;
   }
