@@ -142,10 +142,10 @@ if (!window.__ssr_reload) {
       <div style="margin-top:8px;border-top:1px solid #333;padding-top:8px">
         <label style="color:#888">Position:
           <select id="_ssr_position" style="background:#222;color:#ccc;border:1px solid #444;padding:2px;margin-left:4px">
-            <option value="tl" ${settings.position === "tl" ? "selected" : ""}>↖ Top Left</option>
-            <option value="tr" ${settings.position === "tr" ? "selected" : ""}>↗ Top Right</option>
-            <option value="bl" ${settings.position === "bl" ? "selected" : ""}>↙ Bottom Left</option>
-            <option value="br" ${settings.position === "br" ? "selected" : ""}>↘ Bottom Right</option>
+            <option value="tl" ${settings.position === "tl" ? "selected" : ""}>Top Left</option>
+            <option value="tr" ${settings.position === "tr" ? "selected" : ""}>Top Right</option>
+            <option value="bl" ${settings.position === "bl" ? "selected" : ""}>Bottom Left</option>
+            <option value="br" ${settings.position === "br" ? "selected" : ""}>Bottom Right</option>
           </select>
         </label>
       </div>
@@ -183,11 +183,6 @@ if (!window.__ssr_reload) {
     // ========================================
     // Event handlers
     // ========================================
-    panel.querySelector("#_ssr_reload").onchange = (e) => {
-      settings.autoReload = e.target.checked;
-      saveSettings(settings);
-    };
-
     panel.querySelector("#_ssr_islands").onchange = (e) => {
       settings.highlightIslands = e.target.checked;
       saveSettings(settings);
@@ -209,36 +204,48 @@ if (!window.__ssr_reload) {
     // ========================================
     // Live reload via SSE
     // ========================================
-    let es;
-    try {
-      es = new EventSource("/_ssr/_reload");
-    } catch {
-      return;
-    }
+    let es, checkInterval;
 
-    es.onerror = (e) => {
-      e.preventDefault();
-      es.close();
-      window.__ssr_reload = false;
-      badge.innerText = "[...]";
-
-      if (!settings.autoReload) return;
-
-      const check = setInterval(() => {
-        fetch("/_ssr/_ping")
-          .then(({ ok }) => {
-            if (!ok) return;
-            clearInterval(check);
-            location.reload();
-          })
-          .catch(() => {});
-      }, 300);
+    const startReload = () => {
+      if (es) return;
+      try {
+        es = new EventSource("/_ssr/_reload");
+        badge.innerText = "[ssr]";
+      } catch {
+        return;
+      }
+      es.onerror = (e) => {
+        e.preventDefault();
+        stopReload();
+        badge.innerText = "[...]";
+        if (!settings.autoReload) return;
+        checkInterval = setInterval(() => {
+          fetch("/_ssr/_ping")
+            .then(({ ok }) => ok && location.reload())
+            .catch(() => {});
+        }, 300);
+      };
     };
 
-    // Clean up on page unload (for bfcache)
-    window.addEventListener("pagehide", () => {
-      es.close();
-      window.__ssr_reload = false;
-    });
+    const stopReload = () => {
+      if (es) {
+        es.close();
+        es = null;
+      }
+      if (checkInterval) {
+        clearInterval(checkInterval);
+        checkInterval = null;
+      }
+    };
+
+    if (settings.autoReload) startReload();
+
+    panel.querySelector("#_ssr_reload").onchange = (e) => {
+      settings.autoReload = e.target.checked;
+      saveSettings(settings);
+      settings.autoReload ? startReload() : stopReload();
+    };
+
+    window.addEventListener("pagehide", stopReload);
   })();
 }
