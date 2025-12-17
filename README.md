@@ -11,7 +11,7 @@ The entire framework is roughly 750 lines of code with zero runtime dependencies
 ## Features
 
 - **Islands architecture**: `*.island.tsx` for hydrated components, `*.client.tsx` for client-only
-- **Framework agnostic**: Works with Bun's native server, **Elysia**, or **Hono**
+- **Framework agnostic**: Works with Bun's native server, **Elysia**, or **Hono** (easy to [write your own adapter](#writing-your-own-adapter))
 - **Fast**: Built on Bun's runtime with optimized bundling
 - **Dev experience**: Hot reload, source maps, and TypeScript support
 
@@ -264,13 +264,15 @@ Babel is used since Solid only supports Babel for JSX transformation at the mome
 
 ```
 src/
-├── index.ts       # Core SSR logic and createConfig()
-├── transform.ts   # Babel plugin for island wrapping
-├── build.ts       # Island bundling with code splitting
-├── bun.ts         # Bun.serve() adapter
-├── elysia.ts      # Elysia adapter
-├── hono.ts        # Hono adapter
-└── client.js      # Dev mode auto-reload client
+├── index.ts           # Core SSR logic and createConfig()
+├── transform.ts       # Babel plugin for island wrapping
+├── build.ts           # Island bundling with code splitting
+└── adapter/
+    ├── bun.ts         # Bun.serve() adapter
+    ├── elysia.ts      # Elysia adapter
+    ├── hono.ts        # Hono adapter
+    ├── client.js      # Dev mode client (reload + dev tools)
+    └── utils.ts       # Shared adapter utilities
 ```
 
 ## Configuration Options
@@ -293,6 +295,18 @@ In dev mode, a small `[ssr]` badge appears in the corner of the page. Click it t
 - Move the panel to any corner
 
 Settings are persisted in localStorage.
+
+## Writing Your Own Adapter
+
+Adapters just need to serve files from the `_ssr` directory. See `src/adapter/utils.ts` for shared helpers:
+
+- `getSsrDir(dev)` - Returns path to `_ssr` folder
+- `getCacheHeaders(dev)` - Cache headers (immutable in prod, no-cache in dev)
+- `createClientResponse()` - Dev tools client script
+- `createReloadResponse()` - SSE stream for hot reload
+- `safePath(base, filename)` - Prevents path traversal attacks
+
+Check the existing adapters (~30 lines each) for reference.
 
 ## Contributing
 
