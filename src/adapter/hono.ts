@@ -1,99 +1,48 @@
+// Hono adapter for SSR
 import { Hono } from "hono";
-import { dirname, join } from "path";
 import type { SsrConfig } from "../index";
-// @ts-ignore - Bun text import
-import devClientCode from "./client.js" with { type: "text" };
+import {
+  getSsrDir,
+  getCacheHeaders,
+  createClientResponse,
+  createReloadResponse,
+  safePath,
+} from "./utils";
 
 /**
  * Creates Hono app with SSR routes.
- * Handles /_ssr/* routes for islands and dev tools.
  *
  * @example
  * ```ts
- * import { Hono } from "hono";
- * import { serveStatic } from "hono/bun";
- * import { routes } from "@valentinkolb/ssr/hono";
- * import { config, html } from "./config";
- *
+ * import { routes } from "@valentinkolb/ssr/adapter/hono";
  * const app = new Hono()
  *   .route("/_ssr", routes(config))
- *   .use("/public/*", serveStatic({ root: "./" }))
- *   .get("/", async (c) => {
- *     const response = await html(<Home />);
- *     return c.html(await response.text());
- *   });
- *
- * export default app;
+ *   .get("/", () => html(<Home />));
  * ```
  */
 export const routes = (config: SsrConfig) => {
   const { dev, autoRefresh } = config;
+  const ssrDir = getSsrDir(dev);
 
   const app = new Hono();
 
-  // Dev mode: Serve reload client script
-  app.get("/_client.js", (c) => {
-    if (!dev || !autoRefresh) {
-      return c.notFound();
-    }
-    return new Response(devClientCode, {
+  // Dev mode endpoints
+  if (dev && autoRefresh) {
+    app.get("/_client.js", () => createClientResponse());
+    app.get("/_reload", () => createReloadResponse());
+    app.get("/_ping", (c) => c.text("ok"));
+  }
+
+  // Serve island chunks
+  app.get("/:filename{.+\\.js$}", async (c) => {
+    const path = safePath(ssrDir, c.req.param("filename"));
+    if (!path) return c.notFound();
+    const file = Bun.file(path);
+    if (!(await file.exists())) return c.notFound();
+    return c.body(await file.arrayBuffer(), {
       headers: {
         "Content-Type": "application/javascript",
-        "Cache-Control": "no-cache",
-      },
-    });
-  });
-
-  // Dev mode: SSE endpoint for live reload
-  app.get("/_reload", (c) => {
-    if (!dev || !autoRefresh) {
-      return c.notFound();
-    }
-    return c.body(
-      new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(": connected\n\n"));
-          const interval = setInterval(() => {
-            try {
-              controller.enqueue(new TextEncoder().encode(": ping\n\n"));
-            } catch {
-              clearInterval(interval);
-            }
-          }, 5000);
-        },
-      }),
-      {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      },
-    );
-  });
-
-  // Dev mode: Ping endpoint for reconnection check
-  app.get("/_ping", (c) => {
-    if (!dev || !autoRefresh) {
-      return c.notFound();
-    }
-    return c.text("ok");
-  });
-
-  // Serve all other files as island chunks (use :filename+ to capture filename with extension)
-  app.get("/:filename{.+\\.js$}", async (c) => {
-    const file = Bun.file(
-      join(dev ? "." : Bun.main, "_ssr", c.req.param("filename")),
-    );
-
-    if (!(await file.exists())) return c.notFound();
-
-    return c.body(await file.text(), {
-      headers: {
-        "Content-Type": file.type,
-        "Cache-Control": dev
-          ? "no-cache"
-          : "public, max-age=31536000, immutable",
+        "Cache-Control": getCacheHeaders(dev),
       },
     });
   });
