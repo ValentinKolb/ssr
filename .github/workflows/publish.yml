@@ -25,5 +25,7 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+      - name: Set version from tag
+        run: npm version ${GITHUB_REF#refs/tags/v} --no-git-tag-version
       - run: npm install
       - run: npm publish --provenance --access public
