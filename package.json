@@ -12,16 +12,13 @@
     "./adapter/hono": "./src/adapter/hono.ts"
   },
   "scripts": {
-    "test": "bun test",
-    "build:example": "bun run example/build.ts",
-    "example": "bun --watch --preload=./example/preload.ts run example/server.tsx",
-    "dev": "bun run build:example && bun run example"
+    "test": "bun test"
   },
   "peerDependencies": {
     "solid-js": "^1.9.0",
     "elysia": "^1.0.0",
     "@elysiajs/static": "^1.0.0",
-    "hono": ""
+    "hono": "^4.0.0"
   },
   "peerDependenciesMeta": {
     "elysia": {
@@ -61,6 +58,7 @@
     "ssr",
     "bun",
     "server-side-rendering",
+    "islands",
     "elysia",
     "hono"
   ],
