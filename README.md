@@ -279,10 +279,20 @@ src/
 createConfig({
   dev?: boolean;                // Enable dev mode (default: false)
   verbose?: boolean;            // Enable verbose logging (default: !dev)
-  autoRefresh?: boolean;        // Enable auto-reload in dev (default: true)
   template?: (context) => string; // HTML template function (optional, has default)
 })
 ```
+
+## Dev Tools
+
+In dev mode, a small `[ssr]` badge appears in the corner of the page. Click it to open the dev tools panel where you can:
+
+- Toggle auto-reload on/off
+- Highlight island components (green border)
+- Highlight client components (blue border)
+- Move the panel to any corner
+
+Settings are persisted in localStorage.
 
 ## Contributing
 
