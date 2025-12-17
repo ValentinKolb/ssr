@@ -53,7 +53,7 @@
   "author": "Valentin Kolb",
   "repository": {
     "type": "git",
-    "url": "https://github.com/valentinkolb/ssr"
+    "url": "git+https://github.com/valentinkolb/ssr.git"
   },
   "keywords": [
     "solid",
