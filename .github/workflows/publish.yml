@@ -34,7 +34,7 @@ jobs:
 
       - name: Update package.json version
         run: |
-          bun version ${{ steps.version.outputs.version }} --no-git-tag-version
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
           cat package.json
 
       - name: Run tests
