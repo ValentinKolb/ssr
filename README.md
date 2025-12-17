@@ -74,7 +74,7 @@ export default function Home() {
 
 ```typescript
 import { Bun } from "bun";
-import { routes } from "@valentinkolb/ssr/bun";
+import { routes } from "@valentinkolb/ssr/adapter/bun";
 import { config, html } from "./config";
 import Home from "./pages/Home";
 
@@ -91,7 +91,7 @@ Bun.serve({
 
 ```typescript
 import { Hono } from "hono";
-import { routes } from "@valentinkolb/ssr/hono";
+import { routes } from "@valentinkolb/ssr/adapter/hono";
 import { config, html } from "./config";
 import Home from "./pages/Home";
 
@@ -109,7 +109,7 @@ export default app;
 
 ```typescript
 import { Elysia } from "elysia";
-import { routes } from "@valentinkolb/ssr/elysia";
+import { routes } from "@valentinkolb/ssr/adapter/elysia";
 import { config, html } from "./config";
 import Home from "./pages/Home";
 

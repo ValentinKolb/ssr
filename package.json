@@ -7,9 +7,9 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./bun": "./src/bun.ts",
-    "./elysia": "./src/elysia.ts",
-    "./hono": "./src/hono.ts"
+    "./adapter/bun": "./src/adapter/bun.ts",
+    "./adapter/elysia": "./src/adapter/elysia.ts",
+    "./adapter/hono": "./src/adapter/hono.ts"
   },
   "scripts": {
     "test": "bun test",
@@ -63,5 +63,11 @@
     "server-side-rendering",
     "elysia",
     "hono"
+  ],
+  "files": [
+    "src/**/*.ts",
+    "src/**/*.js",
+    "README.md",
+    "LICENSE"
   ]
 }

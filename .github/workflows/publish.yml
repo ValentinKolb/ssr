@@ -1,4 +1,4 @@
-name: Publish
+name: Publish to NPM
 on:
   push:
     tags:
@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
@@ -26,10 +32,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
 
-      - name: Update jsr.json version
+      - name: Update package.json version
         run: |
-          sed -i 's/"version": "0.0.0"/"version": "'${{ steps.version.outputs.version }}'"/' jsr.json
-          cat jsr.json
+          bun version ${{ steps.version.outputs.version }} --no-git-tag-version
+          cat package.json
 
-      - name: Publish package
-        run: npx jsr publish --allow-slow-types
+      - name: Run tests
+        run: bun test
+
+      - name: Publish to NPM
+        run: npm publish --access public

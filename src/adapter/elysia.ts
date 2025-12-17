@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
 import { join } from "path";
-import type { SsrConfig } from "./index";
+import type { SsrConfig } from "../index";
 // @ts-ignore - Bun text import
 import devClientCode from "./client.js" with { type: "text" };
 
