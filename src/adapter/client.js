@@ -49,9 +49,15 @@ if (!window.__ssr_reload) {
     cursor: "default",
   });
 
-  const es = new EventSource("/_ssr/_reload");
+  let es;
+  try {
+    es = new EventSource("/_ssr/_reload");
+  } catch {
+    return;
+  }
 
-  es.onerror = () => {
+  es.onerror = (e) => {
+    e.preventDefault();
     es.close();
     window.__ssr_reload = false;
     badge.innerText = "[...]";
