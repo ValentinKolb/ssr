@@ -1,4 +1,7 @@
-// Shared utilities for SSR adapters
+/**
+ * Shared utilities for SSR adapters - path helpers, cache headers,
+ * SSE stream for hot reload, and security utilities.
+ */
 import { dirname, join, resolve } from "path";
 // @ts-ignore - Bun text import
 import devClientCode from "./client.js" with { type: "text" };

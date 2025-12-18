@@ -1,3 +1,9 @@
+/**
+ * Core SSR module - exports createConfig() which provides:
+ * - config: SSR configuration for adapters
+ * - plugin: Bun plugin for build/dev that transforms islands
+ * - html: Renders JSX to Response with hydration scripts
+ */
 import { renderToString } from "solid-js/web";
 import type { JSX } from "solid-js";
 import type { BunPlugin } from "bun";

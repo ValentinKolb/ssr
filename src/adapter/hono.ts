@@ -1,4 +1,7 @@
-// Hono adapter for SSR
+/**
+ * Hono adapter - provides Hono app to mount at /_ssr.
+ * Serves island chunks and dev tools endpoints.
+ */
 import { Hono } from "hono";
 import type { SsrConfig } from "../index";
 import {

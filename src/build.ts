@@ -1,3 +1,7 @@
+/**
+ * Island bundler - discovers *.island.tsx and *.client.tsx files,
+ * transforms them for the browser, and outputs chunks to _ssr directory.
+ */
 import { relative } from "path";
 import { Glob } from "bun";
 import { transform, hash } from "./transform";

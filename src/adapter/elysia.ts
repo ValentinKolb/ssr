@@ -1,4 +1,7 @@
-// Elysia adapter for SSR
+/**
+ * Elysia adapter - provides Elysia plugin with SSR routes.
+ * Uses staticPlugin for serving island chunks.
+ */
 import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
 import type { SsrConfig } from "../index";

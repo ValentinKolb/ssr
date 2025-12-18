@@ -1,4 +1,7 @@
-// Bun.serve() adapter for SSR
+/**
+ * Bun.serve() adapter - provides routes object for native Bun server.
+ * Serves island chunks from _ssr and dev tools endpoints.
+ */
 import type { SsrConfig } from "../index";
 import {
   getSsrDir,

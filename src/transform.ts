@@ -1,3 +1,7 @@
+/**
+ * Babel transform for SSR - wraps island/client components in custom elements
+ * with serialized props. Handles both SSR (server) and DOM (client) modes.
+ */
 import { transformAsync, types as t } from "@babel/core";
 // @ts-ignore - no types are available for this package
 import solidPreset from "babel-preset-solid";
