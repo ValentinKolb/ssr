@@ -1,12 +1,10 @@
 // Dev mode live-reload client
-// Uses Server-Sent Events to detect server restart
-
 if (!window.__ssr_reload) {
   window.__ssr_reload = true;
 
   (function () {
     // ========================================
-    // Settings (persisted in localStorage)
+    // Settings
     // ========================================
     const STORAGE_KEY = "_ssr";
     const defaults = {
@@ -16,142 +14,105 @@ if (!window.__ssr_reload) {
       position: "bl",
     };
 
-    const loadSettings = () => {
-      try {
-        return {
-          ...defaults,
-          ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
-        };
-      } catch {
-        return defaults;
-      }
-    };
-
-    const saveSettings = (s) =>
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-
-    let settings = loadSettings();
+    const load = () => ({
+      ...defaults,
+      ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
+    });
+    const save = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    let settings = load();
 
     // ========================================
-    // Component counts from DOM
-    // ========================================
-    const islandCount = document.querySelectorAll("solid-island").length;
-    const clientCount = document.querySelectorAll("solid-client").length;
-
-    // ========================================
-    // Highlight styles
+    // Highlight Styles
     // ========================================
     const style = document.head.appendChild(document.createElement("style"));
 
+    const highlightCSS = (tag, color) => `
+      ${tag} {
+        display: block;
+        box-shadow: 0 0 0 1px ${color} !important;
+        position: relative;
+      }
+      ${tag}::before {
+        content: attr(data-file);
+        position: absolute;
+        top: -17px;
+        left: -1px;
+        font-size: 10px;
+        font-family: monospace;
+        color: black;
+        background: ${color};
+        padding: 1px 4px;
+        white-space: nowrap;
+      }
+    `;
+
     const updateStyles = () => {
-      style.textContent = `
-        ${
-          settings.highlightIslands
-            ? `
-          solid-island {
-            display: block;
-            box-shadow: 0 0 0 1px #22c55e !important;
-            position: relative;
-          }
-          solid-island::before {
-            content: attr(data-file);
-            position: absolute;
-            top: -17px;
-            left: -1px;
-            font-size: 10px;
-            font-family: monospace;
-            color: black;
-            background: #22c55e;
-            padding: 1px 4px;
-            white-space: nowrap;
-          }
-        `
-            : ""
-        }
-        ${
-          settings.highlightClients
-            ? `
-          solid-client {
-            display: block;
-            box-shadow: 0 0 0 1px #3b82f6 !important;
-            position: relative;
-          }
-          solid-client::before {
-            content: attr(data-file);
-            position: absolute;
-            top: -17px;
-            left: -1px;
-            font-size: 10px;
-            font-family: monospace;
-            color: black;
-            background: #3b82f6;
-            padding: 1px 4px;
-            white-space: nowrap;
-          }
-        `
-            : ""
-        }
-      `;
+      style.textContent = [
+        settings.highlightIslands && highlightCSS("solid-island", "#22c55e"),
+        settings.highlightClients && highlightCSS("solid-client", "#3b82f6"),
+      ]
+        .filter(Boolean)
+        .join("");
     };
     updateStyles();
 
     // ========================================
-    // Position logic
+    // Position
     // ========================================
     const positions = {
-      tl: {
-        badge: { top: "8px", left: "8px", bottom: "", right: "" },
-        panel: { top: "32px", left: "8px", bottom: "", right: "" },
-      },
-      tr: {
-        badge: { top: "8px", right: "8px", bottom: "", left: "" },
-        panel: { top: "32px", right: "8px", bottom: "", left: "" },
-      },
-      bl: {
-        badge: { bottom: "8px", left: "8px", top: "", right: "" },
-        panel: { bottom: "32px", left: "8px", top: "", right: "" },
-      },
-      br: {
-        badge: { bottom: "8px", right: "8px", top: "", left: "" },
-        panel: { bottom: "32px", right: "8px", top: "", left: "" },
-      },
+      tl: { top: "8px", left: "8px" },
+      tr: { top: "8px", right: "8px" },
+      bl: { bottom: "8px", left: "8px" },
+      br: { bottom: "8px", right: "8px" },
     };
 
     const applyPosition = () => {
-      const pos = positions[settings.position] || positions.bl;
-      Object.assign(badge.style, pos.badge);
-      Object.assign(panel.style, pos.panel);
+      const reset = { top: "", bottom: "", left: "", right: "" };
+      const pos = positions[settings.position] ?? positions.bl;
+      Object.assign(badge.style, reset, pos);
+      Object.assign(
+        panel.style,
+        reset,
+        pos,
+        pos.top ? { top: "32px" } : { bottom: "32px" },
+      );
     };
 
     // ========================================
-    // UI Elements
+    // UI
     // ========================================
-    const panel = document.body.appendChild(document.createElement("div"));
-    panel.innerHTML = `
-      <div style="margin-bottom:8px;font-weight:bold">SSR Dev Tools</div>
+    const islandCount = document.querySelectorAll("solid-island").length;
+    const clientCount = document.querySelectorAll("solid-client").length;
+
+    const el = (tag, props = {}, parent = document.body) =>
+      Object.assign(parent.appendChild(document.createElement(tag)), props);
+
+    const checkbox = (id, label, checked) => `
       <label style="display:block;margin:4px 0;cursor:pointer">
-        <input type="checkbox" id="_ssr_reload" ${settings.autoReload ? "checked" : ""}>
-        Auto reload
+        <input type="checkbox" id="${id}" ${checked ? "checked" : ""}> ${label}
       </label>
-      <label style="display:block;margin:4px 0;cursor:pointer">
-        <input type="checkbox" id="_ssr_islands" ${settings.highlightIslands ? "checked" : ""}>
-        Highlight islands (${islandCount})
-      </label>
-      <label style="display:block;margin:4px 0;cursor:pointer">
-        <input type="checkbox" id="_ssr_clients" ${settings.highlightClients ? "checked" : ""}>
-        Highlight clients (${clientCount})
-      </label>
-      <div style="margin-top:8px;border-top:1px solid #333;padding-top:8px">
-        <label style="color:#888">Position:
-          <select id="_ssr_position" style="background:#222;color:#ccc;border:1px solid #444;padding:2px;margin-left:4px">
-            <option value="tl" ${settings.position === "tl" ? "selected" : ""}>Top Left</option>
-            <option value="tr" ${settings.position === "tr" ? "selected" : ""}>Top Right</option>
-            <option value="bl" ${settings.position === "bl" ? "selected" : ""}>Bottom Left</option>
-            <option value="br" ${settings.position === "br" ? "selected" : ""}>Bottom Right</option>
-          </select>
-        </label>
-      </div>
     `;
+
+    const panel = el("div", {
+      innerHTML: `
+        <div style="margin-bottom:8px;font-weight:bold">SSR Dev Tools</div>
+        ${checkbox("_ssr_reload", "Auto reload", settings.autoReload)}
+        ${checkbox("_ssr_islands", `Highlight islands (${islandCount})`, settings.highlightIslands)}
+        ${checkbox("_ssr_clients", `Highlight clients (${clientCount})`, settings.highlightClients)}
+        <div style="margin-top:8px;border-top:1px solid #333;padding-top:8px">
+          <label style="color:#888">Position:
+            <select id="_ssr_pos" style="background:#222;color:#ccc;border:1px solid #444;padding:2px;margin-left:4px">
+              ${Object.keys(positions)
+                .map(
+                  (p) =>
+                    `<option value="${p}" ${settings.position === p ? "selected" : ""}>${p.toUpperCase()}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
+        </div>
+      `,
+    });
     Object.assign(panel.style, {
       fontFamily: "monospace",
       fontSize: "12px",
@@ -165,12 +126,12 @@ if (!window.__ssr_reload) {
       display: "none",
     });
 
-    // Badge
-    const badge = document.body.appendChild(document.createElement("div"));
-    badge.innerText = "[ssr]";
-    badge.onclick = () => {
-      panel.style.display = panel.style.display === "none" ? "block" : "none";
-    };
+    const badge = el("div", {
+      innerText: "[ssr]",
+      onclick: () =>
+        (panel.style.display =
+          panel.style.display === "none" ? "block" : "none"),
+    });
     Object.assign(badge.style, {
       fontFamily: "monospace",
       fontSize: "12px",
@@ -183,32 +144,34 @@ if (!window.__ssr_reload) {
     applyPosition();
 
     // ========================================
-    // Event handlers
+    // Event Handlers
     // ========================================
-    panel.querySelector("#_ssr_islands").onchange = (e) => {
-      settings.highlightIslands = e.target.checked;
-      saveSettings(settings);
-      updateStyles();
+    const bind = (id, key, onChange) => {
+      panel.querySelector(`#${id}`).onchange = (e) => {
+        settings[key] =
+          e.target.type === "checkbox" ? e.target.checked : e.target.value;
+        save(settings);
+        onChange?.();
+      };
     };
 
-    panel.querySelector("#_ssr_clients").onchange = (e) => {
-      settings.highlightClients = e.target.checked;
-      saveSettings(settings);
-      updateStyles();
-    };
-
-    panel.querySelector("#_ssr_position").onchange = (e) => {
-      settings.position = e.target.value;
-      saveSettings(settings);
-      applyPosition();
-    };
+    bind("_ssr_islands", "highlightIslands", updateStyles);
+    bind("_ssr_clients", "highlightClients", updateStyles);
+    bind("_ssr_pos", "position", applyPosition);
 
     // ========================================
-    // Live reload via SSE
+    // Live Reload (SSE)
     // ========================================
-    let es, checkInterval;
+    let es, interval;
 
-    const startReload = () => {
+    const stop = () => {
+      es?.close();
+      es = null;
+      clearInterval(interval);
+      interval = null;
+    };
+
+    const start = () => {
       if (es) return;
       try {
         es = new EventSource("/_ssr/_reload");
@@ -216,38 +179,28 @@ if (!window.__ssr_reload) {
       } catch {
         return;
       }
+
       es.onerror = (e) => {
         e.preventDefault();
-        stopReload();
+        stop();
         badge.innerText = "[...]";
         if (!settings.autoReload) return;
-        checkInterval = setInterval(() => {
+        interval = setInterval(() => {
           fetch("/_ssr/_ping")
-            .then(({ ok }) => ok && location.reload())
+            .then((r) => r.ok && location.reload())
             .catch(() => {});
         }, 300);
       };
     };
 
-    const stopReload = () => {
-      if (es) {
-        es.close();
-        es = null;
-      }
-      if (checkInterval) {
-        clearInterval(checkInterval);
-        checkInterval = null;
-      }
-    };
-
-    if (settings.autoReload) startReload();
+    if (settings.autoReload) start();
 
     panel.querySelector("#_ssr_reload").onchange = (e) => {
       settings.autoReload = e.target.checked;
-      saveSettings(settings);
-      settings.autoReload ? startReload() : stopReload();
+      save(settings);
+      settings.autoReload ? start() : stop();
     };
 
-    window.addEventListener("pagehide", stopReload);
+    window.addEventListener("pagehide", stop);
   })();
 }
