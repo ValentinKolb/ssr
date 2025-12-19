@@ -6,7 +6,25 @@ A minimal server-side rendering framework for SolidJS and Bun with islands archi
 
 This framework provides SSR capabilities for SolidJS applications using Bun's runtime. It follows the islands architecture pattern where you can selectively hydrate interactive components while keeping the rest of your page static HTML.
 
-The entire framework is roughly 750 lines of code with zero runtime dependencies beyond Solid, seroval and your chosen web framework adapter.
+## Size & Philosophy
+
+This framework is intentionally minimal. The entire codebase:
+
+| Component | Lines | Raw | Gzipped |
+|-----------|-------|-----|---------|
+| Core (index, transform, build) | ~490 | 15 KB | 4.7 KB |
+| Client hydration | ~200 | 6 KB | 2 KB |
+| Adapters | ~50 each | — | — |
+
+Zero runtime dependencies beyond SolidJS, seroval, and your chosen web framework.
+
+**What's not included** (by design):
+- No client-side routing
+- No state management
+- No CSS-in-JS
+- No build tool abstractions
+
+Use the libraries you already know. This framework just handles SSR and islands hydration.
 
 ## Features
 
