@@ -13,10 +13,16 @@ This framework is intentionally minimal. The entire codebase:
 | Component | Lines | Raw | Gzipped |
 |-----------|-------|-----|---------|
 | Core (index, transform, build) | ~490 | 15 KB | 4.7 KB |
-| Client hydration | ~200 | 6 KB | 2 KB |
+| Client hydration (dev only) | ~200 | 6 KB | 2 KB |
 | Adapters | ~50 each | — | — |
 
-Zero runtime dependencies beyond SolidJS, seroval, and your chosen web framework.
+**Important:** These sizes reflect the framework source code, which runs at build-time and on the server only. The browser receives:
+- Your island components
+- SolidJS runtime (~7 KB gzipped)
+- seroval's `deserialize` function (~2 KB gzipped)
+- A tiny hydration snippet (~150 bytes per island)
+
+Minimal framework overhead in the client bundle.
 
 **What's not included** (by design):
 - No client-side routing
