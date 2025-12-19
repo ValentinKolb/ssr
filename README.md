@@ -17,15 +17,32 @@ The entire framework is roughly 750 lines of code with zero runtime dependencies
 
 ## Example
 
-See [github.com/valentinkolb/ssr-example](https://github.com/valentinkolb/ssr-example) for a complete working example with all three adapters.
+See [github.com/valentinkolb/ssr-example](https://github.com/valentinkolb/ssr-example) for a complete working example with all three adapters, including Tailwind CSS integration.
 
-## Quick Start
+## Installation
 
-Install the package:
+Core dependencies (always required):
 
 ```bash
 bun add @valentinkolb/ssr solid-js
+bun add -d @babel/core @babel/preset-typescript babel-preset-solid
 ```
+
+Plus one adapter depending on your framework:
+
+```bash
+# Bun native - no extra dependencies
+
+# Hono
+bun add hono
+
+# Elysia
+bun add elysia @elysiajs/static
+```
+
+> **Note:** Dependencies like `solid-js`, `hono`, and `elysia` are peer dependencies. This lets you control the exact versions in your project and avoids version conflicts.
+
+## Quick Start
 
 Create a configuration file (optional - has sensible defaults):
 
@@ -307,6 +324,29 @@ Adapters just need to serve files from the `_ssr` directory. See `src/adapter/ut
 - `safePath(base, filename)` - Prevents path traversal attacks
 
 Check the existing adapters (~30 lines each) for reference.
+
+## TypeScript Config
+
+Required tsconfig.json settings for SolidJS:
+
+```json
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+See the [example project](https://github.com/valentinkolb/ssr-example) for a full recommended config.
+
+## Limitations
+
+- **Islands must have default export**: `export default function MyIsland() {}`
+- **Props must be serializable**: seroval supports Date, Map, Set, RegExp, BigInt, but not functions or class instances
+- **No shared state between islands**: Each island hydrates independently. Use URL params, localStorage, or a global store for cross-island communication
 
 ## Contributing
 

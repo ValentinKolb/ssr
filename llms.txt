@@ -1,0 +1,357 @@
+# @valentinkolb/ssr
+
+> Minimal SSR framework for SolidJS + Bun with islands architecture.
+
+## What is this?
+
+A lightweight server-side rendering framework that combines SolidJS with Bun's runtime. It uses the "islands architecture" pattern - most of your page is static HTML with zero JavaScript, while only interactive components ("islands") ship JS to the browser.
+
+Key benefits:
+- **Fast page loads**: Only interactive parts need JavaScript
+- **Simple mental model**: File naming convention determines behavior
+- **No build complexity**: Single Bun plugin handles everything
+- **Framework agnostic**: Works with Bun's native server, Hono, or Elysia
+
+## How it works
+
+Components are categorized by file extension:
+
+- `*.island.tsx` → Server-rendered AND hydrated on client (interactive)
+- `*.client.tsx` → Client-only, skipped during SSR (for browser APIs)
+- `*.tsx` → Server-rendered only, no JavaScript shipped
+
+During build, the framework:
+1. Discovers all island/client components
+2. Bundles them separately for the browser
+3. Wraps them in custom elements (`<solid-island>`, `<solid-client>`)
+4. Serializes props using seroval (supports Date, Map, Set, etc.)
+
+At runtime, each island hydrates independently with its serialized props.
+
+## Example Project
+
+See https://github.com/valentinkolb/ssr-example for a complete working example with all three adapters, including Tailwind CSS integration.
+
+## Installation
+
+Core (always required):
+
+```bash
+bun add @valentinkolb/ssr solid-js
+bun add -d @babel/core @babel/preset-typescript babel-preset-solid
+```
+
+Plus adapter dependencies:
+
+```bash
+# Bun native - no extra dependencies
+
+# Hono
+bun add hono
+
+# Elysia
+bun add elysia @elysiajs/static
+```
+
+Note: `solid-js`, `hono`, `elysia` are peer dependencies - you control the versions.
+
+## Quick Start
+
+### 1. Config
+
+```ts
+// config.ts
+import { createConfig } from "@valentinkolb/ssr";
+
+// createConfig returns { config, plugin, html }
+// - config: pass to adapter routes
+// - plugin: Bun plugin for transforming islands
+// - html: renders JSX to Response
+export const { config, plugin, html } = createConfig({
+  dev: process.env.NODE_ENV === "development",
+});
+```
+
+### 2. Page
+
+```tsx
+// Home.tsx
+export default function Home() {
+  return <h1>Hello World</h1>;
+}
+```
+
+### 3. Preload Script
+
+```ts
+// scripts/preload.ts
+import { plugin } from "../config";
+
+Bun.plugin(plugin());
+```
+
+### 4. Server (Hono example)
+
+```ts
+// server.ts
+import { Hono } from "hono";
+import { routes } from "@valentinkolb/ssr/adapter/hono";
+import { config, html } from "./config";
+import Home from "./Home";
+
+const app = new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", () => html(<Home />));
+
+export default app;
+```
+
+### 5. Run
+
+```bash
+# Development (with hot reload)
+NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts
+```
+
+For production, see "Build for Production" section below.
+
+### 5. Adding an Island
+
+```tsx
+// Counter.island.tsx
+import { createSignal } from "solid-js";
+
+export default function Counter({ start = 0 }) {
+  const [count, setCount] = createSignal(start);
+  return <button onClick={() => setCount(c => c + 1)}>Count: {count()}</button>;
+}
+```
+
+```tsx
+// Home.tsx
+import Counter from "./Counter.island";
+
+export default function Home() {
+  return <div><h1>Welcome</h1><Counter start={5} /></div>;
+}
+```
+
+## Adapters
+
+All adapters require the preload script (see Quick Start step 3).
+
+### Bun (native)
+
+```ts
+import { routes } from "@valentinkolb/ssr/adapter/bun";
+import { config, html } from "./config";
+
+Bun.serve({
+  routes: { ...routes(config), "/": () => html(<Home />) },
+});
+```
+
+### Hono
+
+```ts
+import { Hono } from "hono";
+import { routes } from "@valentinkolb/ssr/adapter/hono";
+import { config, html } from "./config";
+
+export default new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", () => html(<Home />));
+```
+
+### Elysia
+
+```ts
+import { Elysia } from "elysia";
+import { routes } from "@valentinkolb/ssr/adapter/elysia";
+import { config, html } from "./config";
+
+new Elysia()
+  .use(routes(config))
+  .get("/", () => html(<Home />))
+  .listen(3000);
+```
+
+## Component Types
+
+### Island (`*.island.tsx`)
+
+Server-rendered and hydrated. Use for interactive UI.
+
+```tsx
+// Toggle.island.tsx
+import { createSignal } from "solid-js";
+
+export default function Toggle() {
+  const [on, setOn] = createSignal(false);
+  return <button onClick={() => setOn(!on())}>{on() ? "ON" : "OFF"}</button>;
+}
+```
+
+### Client (`*.client.tsx`)
+
+Client-only, not SSR'd. Use for browser APIs (localStorage, window, etc).
+
+```tsx
+// Viewport.client.tsx
+import { createSignal, onMount } from "solid-js";
+
+export default function Viewport() {
+  const [size, setSize] = createSignal({ w: 0, h: 0 });
+  onMount(() => setSize({ w: innerWidth, h: innerHeight }));
+  return <span>{size().w}x{size().h}</span>;
+}
+```
+
+### Regular (`*.tsx`)
+
+SSR-only. No JavaScript shipped to client.
+
+```tsx
+// Header.tsx
+export default function Header({ title }) {
+  return <header><h1>{title}</h1></header>;
+}
+```
+
+## Custom HTML Template
+
+Pass a type parameter to `createConfig<T>` for type-safe template options:
+
+```ts
+type PageMeta = { title: string; description?: string };
+
+const { html } = createConfig<PageMeta>({
+  dev: process.env.NODE_ENV === "development",
+  template: ({ body, scripts, title, description }) => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title}</title>
+        ${description ? `<meta name="description" content="${description}">` : ""}
+      </head>
+      <body>${body}${scripts}</body>
+    </html>
+  `,
+});
+
+// Usage - second argument is type-safe based on PageMeta
+html(<Home />, { title: "My App", description: "Welcome" });
+html(<Home />, { title: "Other" }); // ok, description is optional
+html(<Home />, {}); // TypeScript error: missing 'title'
+```
+
+## Props Serialization
+
+Islands support complex props via [seroval](https://github.com/lxsmnsyc/seroval):
+
+```tsx
+<DataView
+  date={new Date()}
+  items={new Map([["key", "value"]])}
+  tags={new Set(["a", "b"])}
+  pattern={/test/gi}
+  bigNum={123n}
+/>
+```
+
+## Dev Mode Setup
+
+For development with `--watch`, use a preload script to register the plugin:
+
+```ts
+// scripts/preload.ts
+import { plugin } from "../config";
+
+Bun.plugin(plugin());
+```
+
+Run with:
+
+```bash
+bun --watch --preload=./scripts/preload.ts src/server.ts
+```
+
+The preload script runs before your server starts, registering the Bun plugin that transforms island/client components during development.
+
+This creates a `_ssr` directory with bundled island chunks. In dev mode it's at the project root, in production it's next to the compiled server binary (e.g. `dist/_ssr`). Add `_ssr` to your `.gitignore`.
+
+## Build for Production
+
+```ts
+// scripts/build.ts
+import { plugin } from "../config";
+
+await Bun.build({
+  entrypoints: ["src/server.ts"],
+  outdir: "dist",
+  target: "bun",
+  plugins: [plugin()],
+});
+```
+
+```json
+// package.json scripts
+{
+  "dev": "NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts",
+  "build": "NODE_ENV=production bun run scripts/build.ts",
+  "start": "NODE_ENV=production bun dist/server.js"
+}
+```
+
+## Dev Mode
+
+When `dev: true` in createConfig:
+- Hot reload on file changes
+- `[ssr]` badge in corner with dev tools:
+  - Toggle auto-reload
+  - Highlight islands (green) / clients (blue)
+  - Move panel to any corner
+- Dev client settings persisted in localStorage
+
+## TypeScript Config
+
+IMPORTANT: These settings are required. Without them, JSX won't work correctly.
+
+```json
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+Full recommended config:
+
+```json
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+## Limitations
+
+- **Islands must have default export**: `export default function MyIsland() {}`
+- **Props must be serializable**: seroval supports Date, Map, Set, RegExp, BigInt, but not functions or class instances
+- **No shared state between islands**: Each island hydrates independently. Use URL params, localStorage, or a global store for cross-island communication
+- **Client components skip SSR**: `*.client.tsx` render empty on server, content appears after JS loads
