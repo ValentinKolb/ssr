@@ -355,3 +355,4 @@ Full recommended config:
 - **Props must be serializable**: seroval supports Date, Map, Set, RegExp, BigInt, but not functions or class instances
 - **No shared state between islands**: Each island hydrates independently. Use URL params, localStorage, or a global store for cross-island communication
 - **Client components skip SSR**: `*.client.tsx` render empty on server, content appears after JS loads
+- **No nested islands/clients**: An island cannot import another island or client component. This is not needed - once a component is an island, its entire subtree is hydrated. Just use regular components inside islands.

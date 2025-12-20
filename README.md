@@ -371,6 +371,7 @@ See the [example project](https://github.com/valentinkolb/ssr-example) for a ful
 - **Islands must have default export**: `export default function MyIsland() {}`
 - **Props must be serializable**: seroval supports Date, Map, Set, RegExp, BigInt, but not functions or class instances
 - **No shared state between islands**: Each island hydrates independently. Use URL params, localStorage, or a global store for cross-island communication
+- **No nested islands/clients**: An island cannot import another island or client component. This is not needed anyway - once a component is an island, its entire subtree is hydrated. Just use regular components inside islands.
 
 ## Contributing
 

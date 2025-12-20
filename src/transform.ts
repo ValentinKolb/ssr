@@ -39,105 +39,119 @@ const attr = (name: string, value: any) =>
 
 type ComponentType = "island" | "client";
 
-const componentWrapperPlugin = (filename: string, dev: boolean) => ({
-  visitor: {
-    Program(programPath: any) {
-      const componentImports = new Map<
-        string,
-        { path: string; type: ComponentType }
-      >();
+const getComponentType = (path: string): ComponentType | null =>
+  path.includes(".island")
+    ? "island"
+    : path.includes(".client")
+      ? "client"
+      : null;
 
-      // Inject seroval serialize helper at the top
-      programPath.node.body.unshift(
-        t.importDeclaration(
-          [
-            t.importSpecifier(
-              t.identifier("serialize"),
-              t.identifier("serialize"),
-            ),
-          ],
-          t.stringLiteral("seroval"),
-        ),
-        t.variableDeclaration("const", [
-          t.variableDeclarator(
-            t.identifier("__seroval_serialize"),
-            t.identifier("serialize"),
-          ),
-        ]),
-      );
+const componentWrapperPlugin = (filename: string, dev: boolean) => {
+  const parentType = getComponentType(filename);
 
-      programPath.traverse({
-        ImportDeclaration(path: any) {
-          const source: string = path.node.source.value;
+  return {
+    visitor: {
+      Program(programPath: any) {
+        const componentImports = new Map<
+          string,
+          { path: string; type: ComponentType }
+        >();
 
-          let type: ComponentType | null = null;
-          if (source.includes(".island")) type = "island";
-          else if (source.includes(".client")) type = "client";
-          if (!type) return;
-
-          const spec = path.node.specifiers.find(
-            (s: any) => s.type === "ImportDefaultSpecifier",
-          );
-          if (!spec) return;
-
-          let absPath = source.startsWith(".")
-            ? join(dirname(filename), source)
-            : source;
-          if (!absPath.match(/\.(tsx|jsx|ts|js)$/)) absPath += ".tsx";
-
-          componentImports.set(spec.local.name, { path: absPath, type });
-        },
-
-        JSXElement(path: any) {
-          const name = path.node.openingElement.name.name;
-          const component = componentImports.get(name);
-          if (!component) return;
-
-          const id = hash(component.path);
-          const wrapperTag =
-            component.type === "island" ? "solid-island" : "solid-client";
-
-          const props = t.objectExpression(
-            path.node.openingElement.attributes
-              .filter((a: any) => a.type === "JSXAttribute")
-              .map((a: any) =>
-                t.objectProperty(
-                  t.identifier(a.name.name),
-                  a.value?.type === "JSXExpressionContainer"
-                    ? a.value.expression
-                    : a.value || t.booleanLiteral(true),
-                ),
+        // Inject seroval serialize helper at the top
+        programPath.node.body.unshift(
+          t.importDeclaration(
+            [
+              t.importSpecifier(
+                t.identifier("serialize"),
+                t.identifier("serialize"),
               ),
-          );
-
-          // For islands: wrap the component, for client: empty wrapper (no SSR)
-          const children = component.type === "island" ? [path.node] : [];
-
-          // Extract filename from path (e.g., "Counter.island.tsx")
-          const file = component.path.split("/").pop() || "";
-
-          const attrs = [
-            attr("data-id", id),
-            attr(
-              "data-props",
-              t.callExpression(t.identifier("__seroval_serialize"), [props]),
+            ],
+            t.stringLiteral("seroval"),
+          ),
+          t.variableDeclaration("const", [
+            t.variableDeclarator(
+              t.identifier("__seroval_serialize"),
+              t.identifier("serialize"),
             ),
-          ];
+          ]),
+        );
 
-          // Add file attribute in dev mode
-          if (dev) {
-            attrs.push(attr("data-file", file));
-          }
+        programPath.traverse({
+          ImportDeclaration(path: any) {
+            const source: string = path.node.source.value;
+            const type = getComponentType(source);
+            if (!type) return;
 
-          const wrapper = jsx(wrapperTag, attrs, children);
+            if (parentType) {
+              console.warn(
+                `[ssr] Warning: ${parentType} imports ${type} (${source}) - nested islands/clients are not supported`,
+              );
+            }
 
-          path.replaceWith(wrapper);
-          path.skip();
-        },
-      });
+            const spec = path.node.specifiers.find(
+              (s: any) => s.type === "ImportDefaultSpecifier",
+            );
+            if (!spec) return;
+
+            let absPath = source.startsWith(".")
+              ? join(dirname(filename), source)
+              : source;
+            if (!absPath.match(/\.(tsx|jsx|ts|js)$/)) absPath += ".tsx";
+
+            componentImports.set(spec.local.name, { path: absPath, type });
+          },
+
+          JSXElement(path: any) {
+            const name = path.node.openingElement.name.name;
+            const component = componentImports.get(name);
+            if (!component) return;
+
+            const id = hash(component.path);
+            const wrapperTag =
+              component.type === "island" ? "solid-island" : "solid-client";
+
+            const props = t.objectExpression(
+              path.node.openingElement.attributes
+                .filter((a: any) => a.type === "JSXAttribute")
+                .map((a: any) =>
+                  t.objectProperty(
+                    t.identifier(a.name.name),
+                    a.value?.type === "JSXExpressionContainer"
+                      ? a.value.expression
+                      : a.value || t.booleanLiteral(true),
+                  ),
+                ),
+            );
+
+            // For islands: wrap the component, for client: empty wrapper (no SSR)
+            const children = component.type === "island" ? [path.node] : [];
+
+            // Extract filename from path (e.g., "Counter.island.tsx")
+            const file = component.path.split("/").pop() || "";
+
+            const attrs = [
+              attr("data-id", id),
+              attr(
+                "data-props",
+                t.callExpression(t.identifier("__seroval_serialize"), [props]),
+              ),
+            ];
+
+            // Add file attribute in dev mode
+            if (dev) {
+              attrs.push(attr("data-file", file));
+            }
+
+            const wrapper = jsx(wrapperTag, attrs, children);
+
+            path.replaceWith(wrapper);
+            path.skip();
+          },
+        });
+      },
     },
-  },
-});
+  };
+};
 
 // ============================================================================
 // Transform function
