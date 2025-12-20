@@ -6,7 +6,6 @@ import type { SsrConfig } from "../index";
 import {
   getSsrDir,
   getCacheHeaders,
-  createClientResponse,
   createReloadResponse,
   notFound,
   safePath,
@@ -37,7 +36,6 @@ export const routes = (config: SsrConfig): Routes => {
     ? {
         "/_ssr/_reload": () => createReloadResponse(),
         "/_ssr/_ping": () => new Response("ok"),
-        "/_ssr/_client.js": () => createClientResponse(),
       }
     : {};
 

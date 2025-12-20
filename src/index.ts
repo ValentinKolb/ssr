@@ -10,6 +10,8 @@ import type { BunPlugin } from "bun";
 import { transform } from "./transform";
 import { buildIslands } from "./build";
 import { join, dirname } from "path";
+// @ts-ignore - Bun text import
+import devClientCode from "./adapter/client.js" with { type: "text" };
 
 // ============================================================================
 // Constants
@@ -113,30 +115,19 @@ export const createConfig = <T extends object = object>(
     verbose,
   };
 
+  // Hydration script - dynamically loads island/client bundles based on DOM
+  const hydrationScript = `<script type="module">document.querySelectorAll('solid-island,solid-client').forEach(e=>import('/_ssr/'+e.dataset.id+'.js'));</script>`;
+
   // HTML renderer
   const html: HtmlFn<T> = async (element, opts = {} as T) => {
     const body = renderToString(() => element);
 
-    // Extract island and client component IDs from rendered HTML
-    const matches = [
-      ...body.matchAll(/<solid-(island|client) data-id="([^"]+)"/g),
-    ];
-    const islands = [
-      ...new Set(matches.filter((m) => m[1] === "island").map((m) => m[2])),
-    ];
-    const clients = [
-      ...new Set(matches.filter((m) => m[1] === "client").map((m) => m[2])),
-    ];
-    const islandIds = [...islands, ...clients];
-
     // Component scripts
-    let scripts = islandIds
-      .map((id) => `<script type="module" src="/_ssr/${id}.js"></script>`)
-      .join("\n");
+    let scripts = hydrationScript;
 
-    // Add dev tools script in dev mode
+    // Add dev tools script in dev mode (inlined)
     if (dev) {
-      scripts += `\n<script type="module" src="/_ssr/_client.js"></script>`;
+      scripts += `\n<script type="module">${devClientCode}</script>`;
     }
 
     const content = await htmlTemplate({

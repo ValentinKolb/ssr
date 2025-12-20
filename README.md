@@ -343,7 +343,6 @@ Adapters just need to serve files from the `_ssr` directory. See `src/adapter/ut
 
 - `getSsrDir(dev)` - Returns path to `_ssr` folder
 - `getCacheHeaders(dev)` - Cache headers (immutable in prod, no-cache in dev)
-- `createClientResponse()` - Dev tools client script
 - `createReloadResponse()` - SSE stream for hot reload
 - `safePath(base, filename)` - Prevents path traversal attacks
 

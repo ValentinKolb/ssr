@@ -3,8 +3,6 @@
  * SSE stream for hot reload, and security utilities.
  */
 import { dirname, join, resolve } from "path";
-// @ts-ignore - Bun text import
-import devClientCode from "./client.js" with { type: "text" };
 
 /**
  * Get the _ssr directory path based on dev/prod mode.
@@ -43,17 +41,6 @@ export const createReloadStream = (): ReadableStream =>
           clearInterval(interval);
         }
       }, 5000);
-    },
-  });
-
-/**
- * Creates a Response for the dev client script
- */
-export const createClientResponse = (): Response =>
-  new Response(devClientCode, {
-    headers: {
-      "Content-Type": "application/javascript",
-      "Cache-Control": "no-cache",
     },
   });
 

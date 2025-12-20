@@ -3,9 +3,7 @@ if (!window.__ssr_reload) {
   window.__ssr_reload = true;
 
   (function () {
-    // ========================================
     // Settings
-    // ========================================
     const STORAGE_KEY = "_ssr";
     const defaults = {
       autoReload: true,
@@ -21,9 +19,7 @@ if (!window.__ssr_reload) {
     const save = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     let settings = load();
 
-    // ========================================
     // Highlight Styles
-    // ========================================
     const style = document.head.appendChild(document.createElement("style"));
 
     const highlightCSS = (tag, color) => `
@@ -56,9 +52,7 @@ if (!window.__ssr_reload) {
     };
     updateStyles();
 
-    // ========================================
     // Position
-    // ========================================
     const positions = {
       tl: { top: "8px", left: "8px" },
       tr: { top: "8px", right: "8px" },
@@ -78,9 +72,7 @@ if (!window.__ssr_reload) {
       );
     };
 
-    // ========================================
     // UI
-    // ========================================
     const islandCount = document.querySelectorAll("solid-island").length;
     const clientCount = document.querySelectorAll("solid-client").length;
 
@@ -143,9 +135,7 @@ if (!window.__ssr_reload) {
 
     applyPosition();
 
-    // ========================================
     // Event Handlers
-    // ========================================
     const bind = (id, key, onChange) => {
       panel.querySelector(`#${id}`).onchange = (e) => {
         settings[key] =
@@ -159,9 +149,7 @@ if (!window.__ssr_reload) {
     bind("_ssr_clients", "highlightClients", updateStyles);
     bind("_ssr_pos", "position", applyPosition);
 
-    // ========================================
     // Live Reload (SSE)
-    // ========================================
     let es, interval;
 
     const stop = () => {

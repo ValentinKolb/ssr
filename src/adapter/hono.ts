@@ -7,7 +7,6 @@ import type { SsrConfig } from "../index";
 import {
   getSsrDir,
   getCacheHeaders,
-  createClientResponse,
   createReloadResponse,
   safePath,
 } from "./utils";
@@ -31,7 +30,6 @@ export const routes = (config: SsrConfig) => {
 
   // Dev mode endpoints
   if (dev) {
-    app.get("/_client.js", () => createClientResponse());
     app.get("/_reload", () => createReloadResponse());
     app.get("/_ping", (c) => c.text("ok"));
   }
