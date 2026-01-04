@@ -13,8 +13,11 @@ import { join, dirname } from "path";
 // Helpers
 // ============================================================================
 
-export const hash = (s: string) =>
-  new Bun.CryptoHasher("md5").update(s).digest("hex").slice(0, 8);
+export const hash = (s: string) => {
+  // Extract filename from path to ensure consistent hashing regardless of import aliases
+  const filename = s.split("/").pop() || s;
+  return new Bun.CryptoHasher("md5").update(filename).digest("hex").slice(0, 8);
+};
 
 // JSX AST helpers
 const jsx = (tag: string, attrs: any[], children: any[] = []) =>
@@ -28,9 +31,7 @@ const jsx = (tag: string, attrs: any[], children: any[] = []) =>
 const attr = (name: string, value: any) =>
   t.jsxAttribute(
     t.jsxIdentifier(name),
-    typeof value === "string"
-      ? t.stringLiteral(value)
-      : t.jsxExpressionContainer(value),
+    typeof value === "string" ? t.stringLiteral(value) : t.jsxExpressionContainer(value),
   );
 
 // ============================================================================
@@ -40,11 +41,7 @@ const attr = (name: string, value: any) =>
 type ComponentType = "island" | "client";
 
 const getComponentType = (path: string): ComponentType | null =>
-  path.includes(".island")
-    ? "island"
-    : path.includes(".client")
-      ? "client"
-      : null;
+  path.includes(".island") ? "island" : path.includes(".client") ? "client" : null;
 
 const componentWrapperPlugin = (filename: string, dev: boolean) => {
   const parentType = getComponentType(filename);
@@ -52,27 +49,16 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
   return {
     visitor: {
       Program(programPath: any) {
-        const componentImports = new Map<
-          string,
-          { path: string; type: ComponentType }
-        >();
+        const componentImports = new Map<string, { path: string; type: ComponentType }>();
 
         // Inject seroval serialize helper at the top
         programPath.node.body.unshift(
           t.importDeclaration(
-            [
-              t.importSpecifier(
-                t.identifier("serialize"),
-                t.identifier("serialize"),
-              ),
-            ],
+            [t.importSpecifier(t.identifier("serialize"), t.identifier("serialize"))],
             t.stringLiteral("seroval"),
           ),
           t.variableDeclaration("const", [
-            t.variableDeclarator(
-              t.identifier("__seroval_serialize"),
-              t.identifier("serialize"),
-            ),
+            t.variableDeclarator(t.identifier("__seroval_serialize"), t.identifier("serialize")),
           ]),
         );
 
@@ -88,14 +74,10 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
               );
             }
 
-            const spec = path.node.specifiers.find(
-              (s: any) => s.type === "ImportDefaultSpecifier",
-            );
+            const spec = path.node.specifiers.find((s: any) => s.type === "ImportDefaultSpecifier");
             if (!spec) return;
 
-            let absPath = source.startsWith(".")
-              ? join(dirname(filename), source)
-              : source;
+            let absPath = source.startsWith(".") ? join(dirname(filename), source) : source;
             if (!absPath.match(/\.(tsx|jsx|ts|js)$/)) absPath += ".tsx";
 
             componentImports.set(spec.local.name, { path: absPath, type });
@@ -107,8 +89,7 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
             if (!component) return;
 
             const id = hash(component.path);
-            const wrapperTag =
-              component.type === "island" ? "solid-island" : "solid-client";
+            const wrapperTag = component.type === "island" ? "solid-island" : "solid-client";
 
             const props = t.objectExpression(
               path.node.openingElement.attributes
@@ -116,9 +97,7 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
                 .map((a: any) =>
                   t.objectProperty(
                     t.identifier(a.name.name),
-                    a.value?.type === "JSXExpressionContainer"
-                      ? a.value.expression
-                      : a.value || t.booleanLiteral(true),
+                    a.value?.type === "JSXExpressionContainer" ? a.value.expression : a.value || t.booleanLiteral(true),
                   ),
                 ),
             );
@@ -131,10 +110,7 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
 
             const attrs = [
               attr("data-id", id),
-              attr(
-                "data-props",
-                t.callExpression(t.identifier("__seroval_serialize"), [props]),
-              ),
+              attr("data-props", t.callExpression(t.identifier("__seroval_serialize"), [props])),
             ];
 
             // Add file attribute in dev mode

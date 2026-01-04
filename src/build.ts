@@ -8,13 +8,10 @@ import { transform, hash } from "./transform";
 
 type ComponentType = "island" | "client";
 
-const getComponentType = (path: string): ComponentType =>
-  path.includes(".client.") ? "client" : "island";
+const getComponentType = (path: string): ComponentType => (path.includes(".client.") ? "client" : "island");
 
 const getSelector = (type: ComponentType, id: string) =>
-  type === "island"
-    ? `solid-island[data-id="${id}"]`
-    : `solid-client[data-id="${id}"]`;
+  type === "island" ? `solid-island[data-id="${id}"]` : `solid-client[data-id="${id}"]`;
 
 export const buildIslands = async (options: {
   pattern: string;
@@ -45,6 +42,25 @@ export const buildIslands = async (options: {
     const selector = getSelector(type, id);
     return { path: componentPath, id, type, selector };
   });
+
+  // Check for duplicate filenames (same filename -> same hash -> collision)
+  const filenameMap = new Map<string, string[]>();
+  for (const c of components) {
+    const filename = c.path.split("/").pop()!;
+    if (!filenameMap.has(filename)) {
+      filenameMap.set(filename, []);
+    }
+    filenameMap.get(filename)!.push(c.path);
+  }
+
+  for (const [filename, paths] of filenameMap) {
+    if (paths.length > 1) {
+      console.warn(`[ssr] Warning: Multiple files with the same name detected: ${filename}`);
+      console.warn("  Files:");
+      paths.forEach((p) => console.warn(`    - ${relative(process.cwd(), p)}`));
+      console.warn("  This will cause hash collisions. Consider renaming these files.");
+    }
+  }
 
   // Build all islands together with code splitting
   // This ensures Solid is only bundled once as a shared chunk
