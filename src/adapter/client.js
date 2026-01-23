@@ -150,19 +150,36 @@ if (!window.__ssr_reload) {
     bind("_ssr_pos", "position", applyPosition);
 
     // Live Reload (SSE)
-    let es, interval;
+    let es, reconnectInterval, animationInterval;
+    const spinFrames = ["[ / ]", "[ – ]", "[ \\ ]", "[ | ]"];
+    let spinIndex = 0;
+
+    const stopAnimation = () => {
+      clearInterval(animationInterval);
+      animationInterval = null;
+    };
+
+    const startAnimation = () => {
+      if (animationInterval) return;
+      spinIndex = 0;
+      animationInterval = setInterval(() => {
+        badge.innerText = spinFrames[spinIndex++ % spinFrames.length];
+      }, 150);
+    };
 
     const stop = () => {
       es?.close();
       es = null;
-      clearInterval(interval);
-      interval = null;
+      clearInterval(reconnectInterval);
+      reconnectInterval = null;
+      stopAnimation();
     };
 
     const start = () => {
       if (es) return;
       try {
         es = new EventSource("/_ssr/_reload");
+        stopAnimation();
         badge.innerText = "[ssr]";
       } catch {
         return;
@@ -171,9 +188,9 @@ if (!window.__ssr_reload) {
       es.onerror = (e) => {
         e.preventDefault();
         stop();
-        badge.innerText = "[...]";
+        startAnimation();
         if (!settings.autoReload) return;
-        interval = setInterval(() => {
+        reconnectInterval = setInterval(() => {
           fetch("/_ssr/_ping")
             .then((r) => r.ok && location.reload())
             .catch(() => {});
