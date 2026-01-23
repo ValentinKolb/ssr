@@ -7,9 +7,9 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./adapter/bun": "./src/adapter/bun.ts",
-    "./adapter/elysia": "./src/adapter/elysia.ts",
-    "./adapter/hono": "./src/adapter/hono.ts"
+    "./bun": "./src/adapter/bun.ts",
+    "./elysia": "./src/adapter/elysia.ts",
+    "./hono": "./src/adapter/hono.ts"
   },
   "scripts": {
     "test": "bun test"
