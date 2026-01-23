@@ -43,10 +43,7 @@ export type SsrConfig = {
   verbose?: boolean;
 };
 
-type HtmlFn<T extends object> = (
-  element: JSX.Element,
-  options?: T,
-) => Promise<Response>;
+export type HtmlFn<T extends object> = (element: JSX.Element, options?: T) => Promise<Response>;
 
 type PluginFn = () => BunPlugin;
 
@@ -87,9 +84,7 @@ export type SsrResult<T extends object> = {
  * });
  * ```
  */
-export const createConfig = <T extends object = object>(
-  options: SsrOptions<T> = {},
-): SsrResult<T> => {
+export const createConfig = <T extends object = object>(options: SsrOptions<T> = {}): SsrResult<T> => {
   const { dev = false, verbose, template } = options;
 
   // Default template if none provided
@@ -169,9 +164,7 @@ export const createConfig = <T extends object = object>(
 
         // Handle .island and .client imports (without .tsx extension)
         build.onResolve({ filter: /\.(island|client)$/ }, (args) => ({
-          path: args.path.startsWith(".")
-            ? join(dirname(args.importer), args.path + ".tsx")
-            : args.path + ".tsx",
+          path: args.path.startsWith(".") ? join(dirname(args.importer), args.path + ".tsx") : args.path + ".tsx",
         }));
 
         // Transform TSX/JSX files with Solid SSR
