@@ -149,6 +149,84 @@ const app = new Hono()
 export default app;
 ```
 
+#### Hono SSR Helper
+
+The Hono adapter also exports `createSSRHandler`, a factory that creates a type-safe `ssr()` helper for page components. This eliminates boilerplate and integrates with Hono's middleware/validator system.
+
+```typescript
+// config.ts
+import { createConfig } from "@valentinkolb/ssr";
+import { createSSRHandler, routes } from "@valentinkolb/ssr/adapter/hono";
+
+type PageOptions = { title?: string; description?: string };
+
+export const { config, plugin, html } = createConfig<PageOptions>({
+  dev: process.env.NODE_ENV === "development",
+  template: ({ body, scripts, title, description }) => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title ?? "App"}</title>
+        ${description ? `<meta name="description" content="${description}">` : ""}
+      </head>
+      <body>${body}${scripts}</body>
+    </html>
+  `,
+});
+
+export const ssr = createSSRHandler(html);
+export { routes };
+```
+
+Pages become async handler functions with access to the Hono context:
+
+```tsx
+// pages/Home.tsx
+import { ssr } from "../config";
+import Counter from "../components/Counter.island";
+
+export default ssr(async (c) => {
+  c.get("page").title = "Home";
+
+  return (
+    <div>
+      <h1>Welcome</h1>
+      <Counter start={5} />
+    </div>
+  );
+});
+```
+
+```typescript
+// server.ts
+import { Hono } from "hono";
+import { config, routes } from "./config";
+import Home from "./pages/Home";
+
+const app = new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", ...Home);
+
+export default app;
+```
+
+The `ssr()` helper also supports Hono middlewares and validators as leading arguments:
+
+```tsx
+import { ssr } from "../config";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+
+export default ssr(
+  zValidator("param", z.object({ id: z.string() })),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    c.get("page").title = `Item ${id}`;
+    return <ItemView id={id} />;
+  }
+);
+```
+
 ### Elysia
 
 ```typescript

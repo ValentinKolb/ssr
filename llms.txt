@@ -163,6 +163,65 @@ export default new Hono()
   .get("/", () => html(<Home />));
 ```
 
+#### Hono SSR Helper
+
+The Hono adapter exports `createSSRHandler` for type-safe page handlers with full Hono middleware/validator support:
+
+```ts
+// config.ts
+import { createConfig } from "@valentinkolb/ssr";
+import { createSSRHandler, routes } from "@valentinkolb/ssr/adapter/hono";
+
+type PageOptions = { title?: string; description?: string };
+
+export const { config, plugin, html } = createConfig<PageOptions>({
+  dev: process.env.NODE_ENV === "development",
+  template: ({ body, scripts, title, description }) => `
+    <!DOCTYPE html>
+    <html>
+      <head><title>${title ?? "App"}</title></head>
+      <body>${body}${scripts}</body>
+    </html>
+  `,
+});
+
+export const ssr = createSSRHandler(html);
+export { routes };
+```
+
+```tsx
+// pages/Home.tsx
+import { ssr } from "../config";
+
+export default ssr(async (c) => {
+  c.get("page").title = "Home";
+  return <h1>Welcome</h1>;
+});
+```
+
+```ts
+// server.ts
+const app = new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", ...Home);
+```
+
+The `ssr()` helper:
+- Sets page options via `c.get("page").title = "..."` (type-safe based on your PageOptions type)
+- Supports returning JSX or Response (for redirects)
+- Accepts Hono middlewares/validators as leading arguments:
+
+```tsx
+export default ssr(
+  zValidator("param", z.object({ id: z.string() })),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    c.get("page").title = `Item ${id}`;
+    return <ItemView id={id} />;
+  }
+);
+```
+
 ### Elysia
 
 ```ts
