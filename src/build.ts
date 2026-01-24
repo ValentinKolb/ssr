@@ -13,6 +13,8 @@ const getComponentType = (path: string): ComponentType => (path.includes(".clien
 const getSelector = (type: ComponentType, id: string) =>
   type === "island" ? `solid-island[data-id="${id}"]` : `solid-client[data-id="${id}"]`;
 
+const fmt = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`);
+
 export const buildIslands = async (options: {
   pattern: string;
   outdir: string;
@@ -21,14 +23,18 @@ export const buildIslands = async (options: {
 }): Promise<void> => {
   const { pattern, outdir, verbose, dev = false } = options;
 
+  const totalStart = performance.now();
+
   const files: string[] = [];
 
+  const scanStart = performance.now();
   for await (const file of new Glob(pattern).scan({
     cwd: process.cwd(),
     absolute: true,
   })) {
     files.push(file);
   }
+  if (verbose) console.log(`Scan: found ${files.length} file(s) in ${fmt(performance.now() - scanStart)}`);
 
   if (!files.length) {
     if (verbose) console.log("No island/client files found.");
@@ -64,6 +70,8 @@ export const buildIslands = async (options: {
 
   // Build all islands together with code splitting
   // This ensures Solid is only bundled once as a shared chunk
+  const transformTimings = verbose ? new Map<string, number>() : undefined;
+  const bundleStart = performance.now();
   const result = await Bun.build({
     entrypoints: components.map((c) => c.id),
     outdir,
@@ -97,15 +105,18 @@ export const buildIslands = async (options: {
 
           // Transform TSX/JSX with Solid DOM mode
           build.onLoad({ filter: /\.(tsx|jsx)$/ }, async ({ path }) => {
+            const t0 = performance.now();
             // Import with ? suffix to register file with bun --watch
             // Issue: https://github.com/oven-sh/bun/issues/4689
             const contents = await import(`${path}?`, {
               with: { type: "text" },
             });
-            return {
+            const result = {
               contents: await transform(contents.default, path, "dom"),
-              loader: "js",
+              loader: "js" as const,
             };
+            transformTimings?.set(path, performance.now() - t0);
+            return result;
           });
         },
       },
@@ -113,12 +124,16 @@ export const buildIslands = async (options: {
   });
 
   if (verbose) {
+    console.log(`Bundle: ${fmt(performance.now() - bundleStart)}`);
     for (const c of components) {
       const rel = relative(process.cwd(), c.path);
-      console.log(`${rel} -> ${outdir}/${c.id}.js`);
+      const t = transformTimings?.get(c.path);
+      console.log(`  ${rel} -> ${outdir}/${c.id}.js${t != null ? ` (transform: ${fmt(t)})` : ""}`);
     }
-    console.log(`Built ${files.length} component(s) to ${outdir}/`);
   }
+  console.log(
+    `Built ${files.length} component(s) to ${outdir}/ in ${fmt(performance.now() - totalStart)}${verbose ? " (total)" : ""}`,
+  );
 
   if (!result.success) {
     console.error("Build failed:");
