@@ -123,6 +123,51 @@ export const buildIslands = async (options: {
     ],
   });
 
+  // Workaround for Bun bundler bug: duplicate export statements in shared chunks
+  // when splitting: true. Scan chunk files and deduplicate export lines.
+  if (result.success) {
+    const chunkGlob = new Glob("chunk-*.js");
+    for await (const chunkFile of chunkGlob.scan({ cwd: outdir, absolute: true })) {
+      const src = await Bun.file(chunkFile).text();
+      // Collect all export blocks and deduplicate
+      const exportRegex = /^export\s*\{[^}]*\}\s*;?\s*$/gm;
+      const exportBlocks = [...src.matchAll(exportRegex)].map((m) => m[0]);
+      if (exportBlocks.length > 1) {
+        // Parse all exported names from all blocks
+        const seenNames = new Set<string>();
+        const uniqueBlocks: string[] = [];
+        for (const block of exportBlocks) {
+          const names =
+            block
+              .match(/\{([^}]*)\}/)?.[1]
+              ?.split(",")
+              .map((n) => n.trim())
+              .filter(Boolean) ?? [];
+          const newNames = names.filter((n) => !seenNames.has(n));
+          if (newNames.length > 0) {
+            uniqueBlocks.push(`export { ${newNames.join(", ")} };`);
+            newNames.forEach((n) => seenNames.add(n));
+          }
+        }
+        // Replace all export blocks with deduplicated ones
+        let fixed = src;
+        for (const block of exportBlocks) {
+          fixed = fixed.replace(block, "");
+        }
+        // Append single combined export before any debugId comment
+        const debugIdIdx = fixed.lastIndexOf("//# debugId=");
+        const combined = uniqueBlocks.join("\n") + "\n";
+        if (debugIdIdx !== -1) {
+          fixed = fixed.slice(0, debugIdIdx) + combined + fixed.slice(debugIdIdx);
+        } else {
+          fixed = fixed.trimEnd() + "\n" + combined;
+        }
+        await Bun.write(chunkFile, fixed);
+        if (verbose) console.log(`  Fixed duplicate exports in ${chunkFile.split("/").pop()}`);
+      }
+    }
+  }
+
   if (verbose) {
     console.log(`Bundle: ${fmt(performance.now() - bundleStart)}`);
     for (const c of components) {
