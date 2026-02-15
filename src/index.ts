@@ -29,6 +29,8 @@ export type SsrOptions<T extends object = object> = {
   dev?: boolean;
   /** Enable verbose logging (default: true in prod, false in dev) */
   verbose?: boolean;
+  /** Modules to exclude from the island bundle (passed to Bun.build) */
+  external?: string[];
   /** HTML template function (optional, has default) */
   template?: (
     ctx: {
@@ -85,7 +87,7 @@ export type SsrResult<T extends object> = {
  * ```
  */
 export const createConfig = <T extends object = object>(options: SsrOptions<T> = {}): SsrResult<T> => {
-  const { dev = false, verbose, template } = options;
+  const { dev = false, verbose, external, template } = options;
 
   // Default template if none provided
   const htmlTemplate =
@@ -156,6 +158,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
             outdir: islandsOutdir,
             verbose: verbose ?? !dev,
             dev,
+            external,
           });
         };
 

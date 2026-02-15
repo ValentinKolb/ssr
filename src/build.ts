@@ -20,8 +20,9 @@ export const buildIslands = async (options: {
   outdir: string;
   verbose: boolean;
   dev?: boolean;
+  external?: string[];
 }): Promise<void> => {
-  const { pattern, outdir, verbose, dev = false } = options;
+  const { pattern, outdir, verbose, dev = false, external } = options;
 
   const totalStart = performance.now();
 
@@ -77,6 +78,7 @@ export const buildIslands = async (options: {
     outdir,
     naming: { entry: "[name].js", chunk: "chunk-[hash].js" },
     target: "browser",
+    external,
     minify: !dev,
     splitting: true,
     sourcemap: dev ? "inline" : "none",
