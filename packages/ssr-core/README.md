@@ -12,6 +12,37 @@ It uses file conventions:
 - `*.client.tsx`: client-only (no SSR HTML content)
 - `*.tsx`: server-only output
 
+## Size & Philosophy
+
+This framework is intentionally minimal and focused on SSR + islands only.
+
+Current source size in this repo (`packages/ssr-core/src`):
+
+| Component | Lines | Raw | Gzipped |
+| --- | ---: | ---: | ---: |
+| Core (`index`, `transform`, `build`, island ID + resolver) | ~689 | 23.8 KB | 7.2 KB |
+| Dev client (overlay + reload, dev only) | ~211 | 6.1 KB | 2.0 KB |
+| Adapters (`bun`, `hono`, `elysia`, shared utils) | ~355 | 10.4 KB | 3.3 KB |
+
+Important: these sizes describe framework source code that runs at build time and on the server.
+The browser receives only:
+
+- your island bundles
+- Solid runtime from your app dependencies
+- `seroval` deserialize runtime
+- a tiny hydration import snippet
+
+Framework overhead in the browser is intentionally small.
+
+What is intentionally not included:
+
+- no client-side router
+- no state management layer
+- no CSS-in-JS abstraction
+- no build tool wrapper around Bun
+
+Use the libraries you already prefer. This package only handles SSR and islands hydration.
+
 ## Features
 
 - Small SSR core with Bun-native build/plugin flow
