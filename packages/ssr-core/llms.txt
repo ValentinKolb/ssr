@@ -1,0 +1,75 @@
+# @valentinkolb/ssr (LLM Notes)
+
+Minimal SSR + islands framework for SolidJS on Bun.
+
+## Repository layout
+
+Monorepo root:
+
+- `packages/ssr-core` (library)
+- `packages/ssr-example` (current Hono example)
+
+## Core files
+
+- `src/index.ts`
+  - `createConfig()`
+  - returns `{ config, plugin, html }`
+  - injects hydration script
+  - production hydration imports use `?v=<buildTimestamp>` cache busting
+
+- `src/transform.ts`
+  - Babel transform for SSR/DOM
+  - wraps island/client component usage with `solid-island` / `solid-client`
+
+- `src/island-id.ts`
+  - stable file-path-based island IDs
+  - avoids collisions across workspace packages
+
+- `src/build.ts`
+  - scans island/client files
+  - bundles browser chunks into `_ssr`
+  - hard-fails on ID collisions
+
+- `src/adapter/*`
+  - Bun, Hono, Elysia adapters
+  - serve built chunks from `/_ssr/*.js`
+
+## Conventions
+
+- `*.island.tsx`: SSR + hydrated
+- `*.client.tsx`: client-only
+- `*.tsx`: server-only
+
+## Monorepo support
+
+`createConfig({ rootDir })` controls:
+
+- island discovery root in build/dev
+- dev `/_ssr` directory used by adapters
+
+Use this when entrypoint package differs from island package location.
+
+## Hono helper
+
+`createSSRHandler(html)` enables pages as:
+
+```tsx
+export default ssr(async (c) => {
+  c.get("page").title = "Home";
+  return <Page />;
+});
+```
+
+Supports middlewares/validators before final handler.
+
+## Local example app
+
+See `packages/ssr-example` for the current reference setup.
+
+Useful workspace commands (from repo root):
+
+```bash
+bun run test
+bun run dev:example
+bun run build:example
+```

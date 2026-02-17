@@ -30,7 +30,7 @@ type Routes = Record<string, RouteHandler>;
  */
 export const routes = (config: SsrConfig): Routes => {
   const { dev } = config;
-  const ssrDir = getSsrDir(dev);
+  const ssrDir = getSsrDir(config);
 
   const devRoutes: Routes = dev
     ? {

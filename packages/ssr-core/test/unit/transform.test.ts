@@ -1,5 +1,23 @@
-import { describe, test, expect } from "bun:test";
+import { afterEach, describe, test, expect } from "bun:test";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { islandIdFromFile } from "../../src/island-id";
 import { transform } from "../../src/transform";
+
+const tempRoots: string[] = [];
+
+const makeTempRoot = (): string => {
+  const root = mkdtempSync(join(tmpdir(), "ssr-transform-test-"));
+  tempRoots.push(root);
+  return root;
+};
+
+afterEach(() => {
+  while (tempRoots.length) {
+    rmSync(tempRoots.pop()!, { recursive: true, force: true });
+  }
+});
 
 describe("transform() - Island wrapping in SSR mode", () => {
   test("should wrap .island imports with solid-island tag", async () => {
@@ -201,6 +219,65 @@ describe("transform() - Edge cases", () => {
     const result = await transform(input, "/test/Page.tsx", "ssr");
 
     expect(result).toContain("solid-island");
+  });
+
+  test("should resolve alias imports to file-based IDs", async () => {
+    const root = makeTempRoot();
+    const pagePath = join(root, "src", "pages", "Page.tsx");
+    const islandPath = join(root, "src", "components", "Counter.island.tsx");
+
+    mkdirSync(join(root, "src", "components"), { recursive: true });
+    mkdirSync(join(root, "src", "pages"), { recursive: true });
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: {
+            "@/*": ["src/*"],
+          },
+        },
+      }),
+    );
+    writeFileSync(islandPath, "export default function Counter(){ return <button>ok</button>; }");
+
+    const input = `
+      import Counter from "@/components/Counter.island";
+      export default () => <Counter />;
+    `;
+
+    const result = await transform(input, pagePath, "ssr", false, root);
+    const expectedId = islandIdFromFile(islandPath, root);
+    const generatedId = result.match(/data-id=\\\"([a-f0-9]{12})\\\"/)?.[1];
+
+    expect(generatedId).toBe(expectedId);
+  });
+
+  test("should hard-fail for unresolved alias imports", async () => {
+    const root = makeTempRoot();
+    const pagePath = join(root, "src", "pages", "Page.tsx");
+
+    mkdirSync(join(root, "src", "pages"), { recursive: true });
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: {
+            "@/*": ["src/*"],
+          },
+        },
+      }),
+    );
+
+    const input = `
+      import Missing from "@/components/Missing.island";
+      export default () => <Missing />;
+    `;
+
+    await expect(transform(input, pagePath, "ssr", false, root)).rejects.toThrow(
+      /Failed to resolve island\/client import/,
+    );
   });
 
   test("should handle .tsx extension in import", async () => {

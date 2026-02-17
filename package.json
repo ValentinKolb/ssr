@@ -1,71 +1,14 @@
 {
-  "name": "@valentinkolb/ssr",
-  "version": "0.0.1",
-  "description": "Minimal SSR framework for SolidJS and Bun",
-  "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./bun": "./src/adapter/bun.ts",
-    "./elysia": "./src/adapter/elysia.ts",
-    "./hono": "./src/adapter/hono.ts"
-  },
-  "scripts": {
-    "test": "bun test"
-  },
-  "peerDependencies": {
-    "solid-js": "^1.9.0",
-    "elysia": "^1.0.0",
-    "@elysiajs/static": "^1.0.0",
-    "hono": "^4.0.0"
-  },
-  "peerDependenciesMeta": {
-    "elysia": {
-      "optional": true
-    },
-    "@elysiajs/static": {
-      "optional": true
-    },
-    "hono": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "seroval": "^1.0.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@babel/preset-typescript": "^7.24.0",
-    "@elysiajs/static": "^1.2.0",
-    "@types/babel__core": "^7.20.5",
-    "@types/bun": "latest",
-    "babel-preset-solid": "^1.8.0",
-    "elysia": "^1.2.0",
-    "hono": "^4.6.14",
-    "solid-js": "^1.9.0",
-    "typescript": "^5.0.0"
-  },
-  "license": "MIT",
-  "author": "Valentin Kolb",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ValentinKolb/ssr.git"
-  },
-  "keywords": [
-    "solid",
-    "solidjs",
-    "ssr",
-    "bun",
-    "server-side-rendering",
-    "islands",
-    "elysia",
-    "hono"
+  "name": "ssr-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
   ],
-  "files": [
-    "src/**/*.ts",
-    "src/**/*.js",
-    "README.md",
-    "LICENSE"
-  ]
+  "scripts": {
+    "test": "bun run --filter @valentinkolb/ssr test",
+    "test:all": "bun run --filter '*' test",
+    "dev:example": "bun run --filter ssr-example dev",
+    "build:example": "bun run --filter ssr-example build",
+    "start:example": "bun run --filter ssr-example start"
+  }
 }

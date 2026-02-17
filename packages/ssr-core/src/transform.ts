@@ -7,17 +7,15 @@ import { transformAsync, types as t } from "@babel/core";
 import solidPreset from "babel-preset-solid";
 // @ts-ignore - no types are available for this package
 import tsPreset from "@babel/preset-typescript";
-import { join, dirname } from "path";
+import { dirname } from "path";
+import { islandIdFromFile } from "./island-id";
+import { resolveIslandImport } from "./island-resolve";
+
+export { hash } from "./island-id";
 
 // ============================================================================
 // Helpers
 // ============================================================================
-
-export const hash = (s: string) => {
-  // Extract filename from path to ensure consistent hashing regardless of import aliases
-  const filename = s.split("/").pop() || s;
-  return new Bun.CryptoHasher("md5").update(filename).digest("hex").slice(0, 8);
-};
 
 // JSX AST helpers
 const jsx = (tag: string, attrs: any[], children: any[] = []) =>
@@ -43,13 +41,13 @@ type ComponentType = "island" | "client";
 const getComponentType = (path: string): ComponentType | null =>
   path.includes(".island") ? "island" : path.includes(".client") ? "client" : null;
 
-const componentWrapperPlugin = (filename: string, dev: boolean) => {
+const componentWrapperPlugin = (filename: string, rootDir: string, dev: boolean) => {
   const parentType = getComponentType(filename);
 
   return {
     visitor: {
       Program(programPath: any) {
-        const componentImports = new Map<string, { path: string; type: ComponentType }>();
+        const componentImports = new Map<string, { path: string; type: ComponentType; id: string }>();
 
         // Inject seroval serialize helper at the top
         programPath.node.body.unshift(
@@ -77,10 +75,11 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
             const spec = path.node.specifiers.find((s: any) => s.type === "ImportDefaultSpecifier");
             if (!spec) return;
 
-            let absPath = source.startsWith(".") ? join(dirname(filename), source) : source;
-            if (!absPath.match(/\.(tsx|jsx|ts|js)$/)) absPath += ".tsx";
+            const resolvedPath = resolveIslandImport(source, dirname(filename), filename);
+            const componentPath = resolvedPath;
+            const id = islandIdFromFile(resolvedPath, rootDir);
 
-            componentImports.set(spec.local.name, { path: absPath, type });
+            componentImports.set(spec.local.name, { path: componentPath, type, id });
           },
 
           JSXElement(path: any) {
@@ -88,7 +87,6 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
             const component = componentImports.get(name);
             if (!component) return;
 
-            const id = hash(component.path);
             const wrapperTag = component.type === "island" ? "solid-island" : "solid-client";
 
             const props = t.objectExpression(
@@ -109,7 +107,7 @@ const componentWrapperPlugin = (filename: string, dev: boolean) => {
             const file = component.path.split("/").pop() || "";
 
             const attrs = [
-              attr("data-id", id),
+              attr("data-id", component.id),
               attr("data-props", t.callExpression(t.identifier("__seroval_serialize"), [props])),
             ];
 
@@ -138,6 +136,7 @@ export const transform = async (
   filename: string,
   mode: "ssr" | "dom",
   dev: boolean = false,
+  rootDir: string = process.cwd(),
 ): Promise<string> => {
   let code = source;
 
@@ -145,7 +144,7 @@ export const transform = async (
     const result = await transformAsync(code, {
       filename,
       parserOpts: { plugins: ["jsx", "typescript"] },
-      plugins: [() => componentWrapperPlugin(filename, dev)],
+      plugins: [() => componentWrapperPlugin(filename, rootDir, dev)],
     });
     code = result?.code || code;
   }

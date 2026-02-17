@@ -7,9 +7,11 @@
 import { renderToString } from "solid-js/web";
 import type { JSX } from "solid-js";
 import type { BunPlugin } from "bun";
+import { statSync } from "fs";
 import { transform } from "./transform";
 import { buildIslands } from "./build";
-import { join, dirname } from "path";
+import { join, dirname, resolve } from "path";
+import { resolveIslandImport } from "./island-resolve";
 // @ts-ignore - Bun text import
 import devClientCode from "./adapter/client.js" with { type: "text" };
 
@@ -20,6 +22,19 @@ import devClientCode from "./adapter/client.js" with { type: "text" };
 /** Glob pattern for island/client component files */
 const COMPONENT_PATTERN = "**/*.{island,client}.tsx";
 
+/**
+ * Build version used for cache busting island script imports in production.
+ * Uses server entrypoint mtime as a stable per-build version value.
+ */
+const getBuildVersion = (dev: boolean): string => {
+  if (dev) return "";
+  try {
+    return String(Math.floor(statSync(Bun.main).mtimeMs));
+  } catch {
+    return String(Date.now());
+  }
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -29,6 +44,8 @@ export type SsrOptions<T extends object = object> = {
   dev?: boolean;
   /** Enable verbose logging (default: true in prod, false in dev) */
   verbose?: boolean;
+  /** Project root for island discovery and dev _ssr assets (default: process.cwd()) */
+  rootDir?: string;
   /** Modules to exclude from the island bundle (passed to Bun.build) */
   external?: string[];
   /** HTML template function (optional, has default) */
@@ -43,6 +60,7 @@ export type SsrOptions<T extends object = object> = {
 export type SsrConfig = {
   dev: boolean;
   verbose?: boolean;
+  rootDir?: string;
 };
 
 export type HtmlFn<T extends object> = (element: JSX.Element, options?: T) => Promise<Response>;
@@ -87,7 +105,8 @@ export type SsrResult<T extends object> = {
  * ```
  */
 export const createConfig = <T extends object = object>(options: SsrOptions<T> = {}): SsrResult<T> => {
-  const { dev = false, verbose, external, template } = options;
+  const { dev = false, verbose, external, template, rootDir: rootDirOption } = options;
+  const rootDir = resolve(rootDirOption ?? process.cwd());
 
   // Default template if none provided
   const htmlTemplate =
@@ -110,10 +129,13 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
   const config: SsrConfig = {
     dev,
     verbose,
+    rootDir,
   };
 
+  const buildVersion = getBuildVersion(dev);
+
   // Hydration script - dynamically loads island/client bundles based on DOM
-  const hydrationScript = `<script type="module">document.querySelectorAll('solid-island,solid-client').forEach(e=>import('/_ssr/'+e.dataset.id+'.js'));</script>`;
+  const hydrationScript = `<script type="module">const v=${JSON.stringify(buildVersion)};document.querySelectorAll('solid-island,solid-client').forEach(e=>import('/_ssr/'+e.dataset.id+'.js'+(v?'?v='+v:'')));</script>`;
 
   // HTML renderer
   const html: HtmlFn<T> = async (element, opts = {} as T) => {
@@ -148,7 +170,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
       setup(build) {
         // Determine output directory
         const prodOutdir = build.config?.outdir;
-        const islandsOutdir = prodOutdir ? join(prodOutdir, "_ssr") : "_ssr";
+        const islandsOutdir = prodOutdir ? join(prodOutdir, "_ssr") : join(rootDir, "_ssr");
 
         const ensureIslands = async () => {
           if (islandsBuilt) return;
@@ -156,6 +178,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
           await buildIslands({
             pattern: COMPONENT_PATTERN,
             outdir: islandsOutdir,
+            cwd: rootDir,
             verbose: verbose ?? !dev,
             dev,
             external,
@@ -166,9 +189,12 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
         build.onStart?.(ensureIslands);
 
         // Handle .island and .client imports (without .tsx extension)
-        build.onResolve({ filter: /\.(island|client)$/ }, (args) => ({
-          path: args.path.startsWith(".") ? join(dirname(args.importer), args.path + ".tsx") : args.path + ".tsx",
-        }));
+        build.onResolve({ filter: /\.(island|client)$/ }, (args) => {
+          const resolveDir = args.resolveDir || (args.importer ? dirname(args.importer) : rootDir);
+          return {
+            path: resolveIslandImport(args.path, resolveDir, args.importer || undefined),
+          };
+        });
 
         // Transform TSX/JSX files with Solid SSR
         build.onLoad({ filter: /\.(tsx|jsx)$/ }, async ({ path }) => {
@@ -178,7 +204,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
           // Issue: https://github.com/oven-sh/bun/issues/4689
           const contents = await import(`${path}?`, { with: { type: "text" } });
           return {
-            contents: await transform(contents.default, path, "ssr", dev),
+            contents: await transform(contents.default, path, "ssr", dev, rootDir),
             loader: "js",
           };
         });

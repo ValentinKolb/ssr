@@ -2,9 +2,10 @@
  * Island bundler - discovers *.island.tsx and *.client.tsx files,
  * transforms them for the browser, and outputs chunks to _ssr directory.
  */
-import { relative } from "path";
+import { relative, resolve } from "path";
 import { Glob } from "bun";
-import { transform, hash } from "./transform";
+import { transform } from "./transform";
+import { ISLAND_ID_LENGTH, islandIdFromFile, toStableKey } from "./island-id";
 
 type ComponentType = "island" | "client";
 
@@ -18,11 +19,13 @@ const fmt = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math
 export const buildIslands = async (options: {
   pattern: string;
   outdir: string;
+  cwd: string;
   verbose: boolean;
   dev?: boolean;
   external?: string[];
 }): Promise<void> => {
-  const { pattern, outdir, verbose, dev = false, external } = options;
+  const { pattern, outdir, cwd, verbose, dev = false, external } = options;
+  const resolvedCwd = resolve(cwd);
 
   const totalStart = performance.now();
 
@@ -30,7 +33,7 @@ export const buildIslands = async (options: {
 
   const scanStart = performance.now();
   for await (const file of new Glob(pattern).scan({
-    cwd: process.cwd(),
+    cwd: resolvedCwd,
     absolute: true,
   })) {
     files.push(file);
@@ -44,29 +47,31 @@ export const buildIslands = async (options: {
 
   // Build component metadata
   const components = files.map((componentPath) => {
-    const id = hash(componentPath);
+    const id = islandIdFromFile(componentPath, resolvedCwd);
+    const key = toStableKey(componentPath, resolvedCwd);
     const type = getComponentType(componentPath);
     const selector = getSelector(type, id);
-    return { path: componentPath, id, type, selector };
+    return { path: componentPath, id, key, type, selector };
   });
 
-  // Check for duplicate filenames (same filename -> same hash -> collision)
-  const filenameMap = new Map<string, string[]>();
+  // Detect hash collisions and fail fast with actionable diagnostics
+  const idMap = new Map<string, typeof components>();
   for (const c of components) {
-    const filename = c.path.split("/").pop()!;
-    if (!filenameMap.has(filename)) {
-      filenameMap.set(filename, []);
+    if (!idMap.has(c.id)) {
+      idMap.set(c.id, []);
     }
-    filenameMap.get(filename)!.push(c.path);
+    idMap.get(c.id)!.push(c);
   }
 
-  for (const [filename, paths] of filenameMap) {
-    if (paths.length > 1) {
-      console.warn(`[ssr] Warning: Multiple files with the same name detected: ${filename}`);
-      console.warn("  Files:");
-      paths.forEach((p) => console.warn(`    - ${relative(process.cwd(), p)}`));
-      console.warn("  This will cause hash collisions. Consider renaming these files.");
-    }
+  const collisions = [...idMap.entries()].filter(([, items]) => items.length > 1);
+  if (collisions.length > 0) {
+    const details = collisions
+      .map(([id, items]) => {
+        const list = items.map((item) => `    - ${item.key} (${relative(resolvedCwd, item.path)})`).join("\n");
+        return `  ID ${id}:\n${list}`;
+      })
+      .join("\n");
+    throw new Error(`[ssr] Island ID collision detected. Rename files or adjust roots.\n${details}`);
   }
 
   // Build all islands together with code splitting
@@ -87,7 +92,7 @@ export const buildIslands = async (options: {
         name: "solid-islands",
         setup(build) {
           // Resolve component IDs as virtual entrypoints
-          build.onResolve({ filter: /^[a-f0-9]{8}$/ }, (args) => ({
+          build.onResolve({ filter: new RegExp(`^[a-f0-9]{${ISLAND_ID_LENGTH}}$`) }, (args) => ({
             path: args.path,
             namespace: "island",
           }));
@@ -173,7 +178,7 @@ export const buildIslands = async (options: {
   if (verbose) {
     console.log(`Bundle: ${fmt(performance.now() - bundleStart)}`);
     for (const c of components) {
-      const rel = relative(process.cwd(), c.path);
+      const rel = relative(resolvedCwd, c.path);
       const t = transformTimings?.get(c.path);
       console.log(`  ${rel} -> ${outdir}/${c.id}.js${t != null ? ` (transform: ${fmt(t)})` : ""}`);
     }

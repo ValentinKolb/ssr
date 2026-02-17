@@ -3,14 +3,15 @@
  * SSE stream for hot reload, and security utilities.
  */
 import { dirname, join, resolve } from "path";
+import type { SsrConfig } from "../index";
 
 /**
  * Get the _ssr directory path based on dev/prod mode.
- * Dev: uses process.cwd() (project root)
+ * Dev: uses config.rootDir (fallback process.cwd())
  * Prod: uses dirname(Bun.main) (next to compiled binary)
  */
-export const getSsrDir = (dev: boolean): string =>
-  join(dev ? process.cwd() : dirname(Bun.main), "_ssr");
+export const getSsrDir = (config: SsrConfig): string =>
+  join(config.dev ? config.rootDir ?? process.cwd() : dirname(Bun.main), "_ssr");
 
 /**
  * Cache headers for static assets

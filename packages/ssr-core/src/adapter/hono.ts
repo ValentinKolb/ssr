@@ -160,7 +160,7 @@ export const createSSRHandler = <T extends object>(html: HtmlFn<T>) => {
  */
 export const routes = (config: SsrConfig) => {
   const { dev } = config;
-  const ssrDir = getSsrDir(dev);
+  const ssrDir = getSsrDir(config);
 
   const app = new Hono();
 

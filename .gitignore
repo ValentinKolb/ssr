@@ -1,5 +1,12 @@
 node_modules
-dist
+**/node_modules
+
 *.log
-.*
-!.github
+
+dist
+**/dist
+
+_ssr
+**/_ssr
+
+.DS_Store

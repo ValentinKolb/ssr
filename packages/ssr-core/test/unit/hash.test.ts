@@ -1,11 +1,11 @@
 import { describe, test, expect } from "bun:test";
-import { hash } from "../../src/transform";
+import { hash, ISLAND_ID_LENGTH } from "../../src/island-id";
 
 describe("hash()", () => {
-  test("should return 8-character hex string", () => {
+  test("should return 12-character hex string", () => {
     const result = hash("test-input");
-    expect(result).toHaveLength(8);
-    expect(result).toMatch(/^[a-f0-9]{8}$/);
+    expect(result).toHaveLength(ISLAND_ID_LENGTH);
+    expect(result).toMatch(new RegExp(`^[a-f0-9]{${ISLAND_ID_LENGTH}}$`));
   });
 
   test("should be deterministic (same input = same hash)", () => {

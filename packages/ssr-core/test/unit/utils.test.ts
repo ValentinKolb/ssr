@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { safePath, getCacheHeaders } from "../../src/adapter/utils";
+import { join } from "path";
+import { safePath, getCacheHeaders, getSsrDir } from "../../src/adapter/utils";
 
 describe("safePath()", () => {
   const base = "/app/_ssr";
@@ -32,5 +33,15 @@ describe("getCacheHeaders()", () => {
 
   test("should return immutable cache in prod mode", () => {
     expect(getCacheHeaders(false)).toBe("public, max-age=31536000, immutable");
+  });
+});
+
+describe("getSsrDir()", () => {
+  test("should use rootDir in dev mode when configured", () => {
+    expect(getSsrDir({ dev: true, rootDir: "/repo" })).toBe("/repo/_ssr");
+  });
+
+  test("should fallback to process.cwd() in dev mode", () => {
+    expect(getSsrDir({ dev: true })).toBe(join(process.cwd(), "_ssr"));
   });
 });

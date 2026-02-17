@@ -26,7 +26,7 @@ import {
  */
 export const routes = (config: SsrConfig) => {
   const { dev } = config;
-  const ssrDir = getSsrDir(dev);
+  const ssrDir = getSsrDir(config);
 
   return new Elysia({ name: "ssr" })
     .use(
