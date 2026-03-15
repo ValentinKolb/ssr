@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { routes as honoRoutes } from "../../src/adapter/hono";
-import { buildIslands } from "../../src/build";
+import { buildIslands, dedupeSharedChunkExports } from "../../src/build";
 import { islandIdFromFile } from "../../src/island-id";
 import { createConfig } from "../../src/index";
 
@@ -127,5 +127,33 @@ describe("buildIslands()", () => {
 
     const id = islandIdFromFile(islandPath, workspaceRoot);
     expect(existsSync(join(outdir, "_ssr", `${id}.js`))).toBe(true);
+  });
+
+  test("dedupeSharedChunkExports() merges duplicate export blocks and preserves debugId footer", async () => {
+    const workspaceRoot = makeTempRoot();
+    const outdir = join(workspaceRoot, "_ssr");
+    mkdirSync(outdir, { recursive: true });
+    const chunkPath = join(outdir, "chunk-test.js");
+
+    writeTempFile(
+      chunkPath,
+      `
+const a = 1;
+const b = 2;
+export { a };
+export { b, a };
+//# debugId=abc123
+      `.trim(),
+    );
+
+    const fixedCount = await dedupeSharedChunkExports(outdir, false);
+    const rewritten = readFileSync(chunkPath, "utf8");
+
+    expect(fixedCount).toBe(1);
+    expect(rewritten).not.toContain("export { b, a };");
+    expect(rewritten).toContain("export { a };");
+    expect(rewritten).toContain("export { b };");
+    expect(rewritten.indexOf("export { a };")).toBeLessThan(rewritten.indexOf("//# debugId=abc123"));
+    expect(rewritten.indexOf("export { b };")).toBeLessThan(rewritten.indexOf("//# debugId=abc123"));
   });
 });
