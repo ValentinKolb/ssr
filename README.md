@@ -1,57 +1,55 @@
 # SSR Monorepo
 
-This repository contains a small SSR framework for SolidJS and Bun plus a working example app.
+Minimal SSR + islands for SolidJS on Bun.
+
+This monorepo contains the framework package and an example app. It focuses on server rendering, client re-rendered islands, and adapters for Bun, Hono, and Elysia.
 
 ## Packages
 
-- `packages/ssr-core` (`@valentinkolb/ssr`)
-  - Core library for server rendering + islands hydration
-  - Supports Bun, Hono, and Elysia adapters
-  - Includes monorepo-aware island discovery (`rootDir`)
-  - Supports path-based mounting for microfrontends via `basePath`
-  - Includes production cache busting for island chunks (`?v=<buildTimestamp>`)
+### `packages/ssr-core`
 
-- `packages/ssr-example`
-  - Hono-only example app using the local workspace package
-  - Shows `createSSRHandler`, islands, client-only components, and API calls
-  - Keeps the original terminal-like visual style
+Published as `@valentinkolb/ssr`.
 
-## Why this repo
+- SSR core with Bun-native build/plugin flow
+- islands and client-only components via file conventions
+- adapters for Bun, Hono, and Elysia
+- monorepo support via `rootDir`
+- microfrontend support via `basePath`
 
-`@valentinkolb/ssr` is intentionally small and focused:
+See the full package docs in [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
 
-- convention-based component types (`*.island.tsx`, `*.client.tsx`)
-- tiny runtime behavior in the browser
-- no router/state/CSS framework assumptions
-- clear integration points through adapters
+### `packages/ssr-example`
 
-## Size & Philosophy
+Reference Hono app using the local workspace package.
 
-This project keeps SSR/islands logic small and explicit instead of adding a full app framework.
+- uses `createSSRHandler`
+- includes islands, client-only components, and API calls
 
-Current `ssr-core` source footprint (`packages/ssr-core/src`):
+See [packages/ssr-example/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-example/README.md).
 
-| Component | Lines | Raw | Gzipped |
-| --- | ---: | ---: | ---: |
-| Core + island ID/resolution | ~689 | 23.8 KB | 7.2 KB |
-| Dev client (dev only) | ~211 | 6.1 KB | 2.0 KB |
-| Adapters + shared adapter utils | ~355 | 10.4 KB | 3.3 KB |
+## Example
 
-In the browser you mainly ship your own island code plus Solid/seroval runtime pieces.
-`@valentinkolb/ssr` itself is designed to stay low-overhead on the client.
+```ts
+import { createConfig } from "@valentinkolb/ssr";
+import { createSSRHandler, routes } from "@valentinkolb/ssr/hono";
+import { Hono } from "hono";
 
-Deliberately out of scope:
+const { config, html } = createConfig({
+  template: ({ body, scripts }) => `<!doctype html><body>${body}${scripts}</body>`,
+});
 
-- client-side routing
-- global state management
-- CSS-in-JS or styling opinions
-- build abstraction beyond Bun
+const ssr = createSSRHandler(html);
 
-If you want full usage docs, go to:
+const Home = ssr(async () => <button>hello</button>);
 
-- `packages/ssr-core/README.md`
+export default new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", ...Home);
+```
 
-## Workspace commands
+For installation, adapter setup, `createConfig()` options, and `basePath`, see [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
+
+## Development
 
 Run from repo root:
 
@@ -63,8 +61,23 @@ bun run build:example
 bun run start:example
 ```
 
-## Where to look next
+## Agent Skills (optional)
 
-- Library docs: `packages/ssr-core/README.md`
-- LLM context notes: `packages/ssr-core/llms.txt`
-- Live example source: `packages/ssr-example`
+This repository includes agent skills in `skills/`.
+
+Available skills:
+
+- `ssr` for building apps with `@valentinkolb/ssr`
+- `ssr-maintainer` for framework-internal work in `ssr-core`
+
+Install them with the Vercel Skills CLI:
+
+```bash
+bunx skills add https://github.com/ValentinKolb/ssr --skill '*'
+```
+
+## Notes
+
+- Framework documentation: [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md)
+- Example app: [packages/ssr-example](/Users/valentinkolb/Git/ssr/packages/ssr-example)
+- LLM notes: [packages/ssr-core/llms.txt](/Users/valentinkolb/Git/ssr/packages/ssr-core/llms.txt)
