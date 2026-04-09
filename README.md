@@ -8,6 +8,7 @@ This repository contains a small SSR framework for SolidJS and Bun plus a workin
   - Core library for server rendering + islands hydration
   - Supports Bun, Hono, and Elysia adapters
   - Includes monorepo-aware island discovery (`rootDir`)
+  - Supports path-based mounting for microfrontends via `basePath`
   - Includes production cache busting for island chunks (`?v=<buildTimestamp>`)
 
 - `packages/ssr-example`

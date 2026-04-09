@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { hc } from "hono/client";
-import type { ApiType } from "../server";
+import type { ApiType } from "../api";
 
 const client = hc<ApiType>("/api");
 
@@ -10,7 +10,7 @@ export default () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const res = await client.data.$get();
+    const res = await client.msg.$get();
     setData(JSON.stringify(await res.json(), null, 2));
     setLoading(false);
   };

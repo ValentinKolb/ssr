@@ -29,20 +29,20 @@ type Routes = Record<string, RouteHandler>;
  * ```
  */
 export const routes = (config: SsrConfig): Routes => {
-  const { dev } = config;
+  const { dev, ssrPath } = config;
   const ssrDir = getSsrDir(config);
 
   const devRoutes: Routes = dev
     ? {
-        "/_ssr/_reload": () => createReloadResponse(),
-        "/_ssr/_ping": () => new Response("ok"),
+        [`${ssrPath}/_reload`]: () => createReloadResponse(),
+        [`${ssrPath}/_ping`]: () => new Response("ok"),
       }
     : {};
 
   return {
     ...devRoutes,
 
-    "/_ssr/*.js": async (req) => {
+    [`${ssrPath}/*.js`]: async (req) => {
       const filename = new URL(req.url).pathname.split("/").pop()!;
       const path = safePath(ssrDir, filename);
       if (!path) return notFound();

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { join } from "path";
-import { safePath, getCacheHeaders, getSsrDir } from "../../src/adapter/utils";
+import { safePath, getCacheHeaders, getSsrDir, normalizeBasePath, toSsrPath } from "../../src/adapter/utils";
 
 describe("safePath()", () => {
   const base = "/app/_ssr";
@@ -38,10 +38,37 @@ describe("getCacheHeaders()", () => {
 
 describe("getSsrDir()", () => {
   test("should use rootDir in dev mode when configured", () => {
-    expect(getSsrDir({ dev: true, rootDir: "/repo" })).toBe("/repo/_ssr");
+    expect(getSsrDir({ dev: true, rootDir: "/repo", basePath: "", ssrPath: "/_ssr" })).toBe("/repo/_ssr");
   });
 
   test("should fallback to process.cwd() in dev mode", () => {
-    expect(getSsrDir({ dev: true })).toBe(join(process.cwd(), "_ssr"));
+    expect(getSsrDir({ dev: true, basePath: "", ssrPath: "/_ssr" })).toBe(join(process.cwd(), "_ssr"));
+  });
+});
+
+describe("normalizeBasePath()", () => {
+  test("normalizes empty and root inputs", () => {
+    expect(normalizeBasePath()).toBe("");
+    expect(normalizeBasePath("")).toBe("");
+    expect(normalizeBasePath("/")).toBe("");
+  });
+
+  test("removes trailing slashes", () => {
+    expect(normalizeBasePath("/docs")).toBe("/docs");
+    expect(normalizeBasePath("/docs/")).toBe("/docs");
+  });
+
+  test("rejects values without a leading slash", () => {
+    expect(() => normalizeBasePath("docs")).toThrow(/basePath must start with "\/" or be empty/);
+  });
+});
+
+describe("toSsrPath()", () => {
+  test("returns root SSR path by default", () => {
+    expect(toSsrPath("")).toBe("/_ssr");
+  });
+
+  test("prefixes the SSR path with the base path", () => {
+    expect(toSsrPath("/docs")).toBe("/docs/_ssr");
   });
 });

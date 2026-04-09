@@ -25,17 +25,17 @@ import {
  * ```
  */
 export const routes = (config: SsrConfig) => {
-  const { dev } = config;
+  const { dev, ssrPath } = config;
   const ssrDir = getSsrDir(config);
 
   return new Elysia({ name: "ssr" })
     .use(
       staticPlugin({
         assets: ssrDir,
-        prefix: "/_ssr",
+        prefix: ssrPath,
         headers: { "Cache-Control": getCacheHeaders(dev) },
       }),
     )
-    .get("/_ssr/_reload", () => (dev ? createReloadResponse() : notFound()))
-    .get("/_ssr/_ping", () => (dev ? new Response("ok") : notFound()));
+    .get(`${ssrPath}/_reload`, () => (dev ? createReloadResponse() : notFound()))
+    .get(`${ssrPath}/_ping`, () => (dev ? new Response("ok") : notFound()));
 };

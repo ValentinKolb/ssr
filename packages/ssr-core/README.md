@@ -49,6 +49,7 @@ Use the libraries you already prefer. This package only handles SSR and islands 
 - Adapters for Bun, Hono, and Elysia
 - Type-safe Hono page helper via `createSSRHandler`
 - Monorepo support via `rootDir`
+- Public path mounting via `basePath` for microfrontends
 - Stable file-path-based island IDs (collision-safe across workspace packages)
 - Production chunk cache busting (`/_ssr/*.js?v=<buildTimestamp>`)
 
@@ -56,7 +57,6 @@ Use the libraries you already prefer. This package only handles SSR and islands 
 
 ```bash
 bun add @valentinkolb/ssr solid-js
-bun add -d @babel/core @babel/preset-typescript babel-preset-solid
 
 # choose adapter deps you need
 bun add hono
@@ -95,6 +95,8 @@ export const { config, plugin, html } = createConfig<PageOptions>({
   dev: process.env.NODE_ENV === "development",
   // For monorepos with separated packages:
   // rootDir: "/path/to/workspace-root",
+  // For microfrontends mounted under /docs:
+  // basePath: "/docs",
   template: ({ body, scripts, title, description }) => `
     <!doctype html>
     <html>
@@ -179,6 +181,7 @@ createConfig({
   dev?: boolean;         // default: false
   verbose?: boolean;     // default: !dev
   rootDir?: string;      // default: process.cwd()
+  basePath?: string;     // default: "", example: "/docs"
   external?: string[];   // passed to Bun.build for island bundle
   template?: ({ body, scripts, ...custom }) => string | Promise<string>;
 })
@@ -187,7 +190,29 @@ createConfig({
 ### Notes
 
 - `rootDir` is important in monorepos where server entrypoint and island files live in different packages.
+- `basePath` moves SSR assets and dev endpoints under that prefix, e.g. `/docs/_ssr`.
 - In production, hydration imports include a build timestamp query (`?v=...`) for cache busting.
+
+## Microfrontend mount example
+
+Use `basePath` when the SSR app is mounted under a sub-path:
+
+```ts
+// config.ts
+export const { config, html } = createConfig({
+  basePath: "/docs",
+});
+
+// docs-app.ts
+const docsApp = new Hono()
+  .route("/_ssr", routes(config))
+  .get("/", () => html(<DocsHome />));
+
+// host-app.ts
+export default new Hono().route("/docs", docsApp);
+```
+
+With this setup, hydration chunks and dev endpoints are served from `/docs/_ssr/...`.
 
 ## Build for production
 

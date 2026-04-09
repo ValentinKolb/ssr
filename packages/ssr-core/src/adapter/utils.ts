@@ -6,6 +6,27 @@ import { dirname, join, resolve } from "path";
 import type { SsrConfig } from "../index";
 
 /**
+ * Normalize a public app base path.
+ * - undefined, "", "/" => ""
+ * - "/docs/" => "/docs"
+ * - values without leading slash are rejected
+ */
+export const normalizeBasePath = (input?: string): string => {
+  const value = input?.trim() ?? "";
+  if (!value || value === "/") return "";
+  if (!value.startsWith("/")) {
+    throw new Error(`[ssr] basePath must start with "/" or be empty. Received: ${JSON.stringify(input)}`);
+  }
+  return value.replace(/\/+$/, "");
+};
+
+/**
+ * Public HTTP path prefix used for SSR assets/endpoints.
+ */
+export const toSsrPath = (basePath: string): string =>
+  basePath ? `${basePath}/_ssr` : "/_ssr";
+
+/**
  * Get the _ssr directory path based on dev/prod mode.
  * Dev: uses config.rootDir (fallback process.cwd())
  * Prod: uses dirname(Bun.main) (next to compiled binary)

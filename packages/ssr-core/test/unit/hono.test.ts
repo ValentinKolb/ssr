@@ -236,12 +236,12 @@ describe("createSSRHandler", () => {
 
 describe("routes", () => {
   test("creates Hono app", () => {
-    const app = routes({ dev: false });
+    const app = routes({ dev: false, basePath: "", ssrPath: "/_ssr" });
     expect(app).toBeInstanceOf(Hono);
   });
 
   test("dev mode adds _reload and _ping endpoints", async () => {
-    const app = routes({ dev: true });
+    const app = routes({ dev: true, basePath: "", ssrPath: "/_ssr" });
 
     const pingResponse = await app.request("/_ping");
     expect(pingResponse.status).toBe(200);
@@ -253,7 +253,7 @@ describe("routes", () => {
   });
 
   test("prod mode does not add dev endpoints", async () => {
-    const app = routes({ dev: false });
+    const app = routes({ dev: false, basePath: "", ssrPath: "/_ssr" });
 
     const pingResponse = await app.request("/_ping");
     expect(pingResponse.status).toBe(404);
@@ -265,14 +265,14 @@ describe("routes", () => {
   test("serves .js files", async () => {
     // This test would require actual files in _ssr directory
     // For now, just verify the route exists and returns 404 for missing files
-    const app = routes({ dev: true });
+    const app = routes({ dev: true, basePath: "", ssrPath: "/_ssr" });
 
     const response = await app.request("/nonexistent.js");
     expect(response.status).toBe(404);
   });
 
   test("rejects path traversal attempts", async () => {
-    const app = routes({ dev: true });
+    const app = routes({ dev: true, basePath: "", ssrPath: "/_ssr" });
 
     const response = await app.request("/../../../etc/passwd.js");
     expect(response.status).toBe(404);
@@ -284,11 +284,38 @@ describe("routes", () => {
       mkdirSync(join(rootDir, "_ssr"), { recursive: true });
       writeFileSync(join(rootDir, "_ssr", "island.js"), "export default 1;");
 
-      const app = routes({ dev: true, rootDir });
+      const app = routes({ dev: true, rootDir, basePath: "", ssrPath: "/_ssr" });
       const response = await app.request("/island.js");
 
       expect(response.status).toBe(200);
       expect(await response.text()).toContain("export default 1");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  test("works when a feature app is mounted under a base path", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "ssr-hono-mounted-"));
+    try {
+      mkdirSync(join(rootDir, "_ssr"), { recursive: true });
+      writeFileSync(join(rootDir, "_ssr", "island.js"), "export default 1;");
+
+      const featureApp = new Hono().route(
+        "/_ssr",
+        routes({ dev: true, rootDir, basePath: "/docs", ssrPath: "/docs/_ssr" }),
+      );
+      const hostApp = new Hono().route("/docs", featureApp);
+
+      const assetResponse = await hostApp.request("/docs/_ssr/island.js");
+      const pingResponse = await hostApp.request("/docs/_ssr/_ping");
+      const reloadResponse = await hostApp.request("/docs/_ssr/_reload");
+
+      expect(assetResponse.status).toBe(200);
+      expect(await assetResponse.text()).toContain("export default 1");
+      expect(pingResponse.status).toBe(200);
+      expect(await pingResponse.text()).toBe("ok");
+      expect(reloadResponse.status).toBe(200);
+      expect(reloadResponse.headers.get("Content-Type")).toBe("text/event-stream");
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }

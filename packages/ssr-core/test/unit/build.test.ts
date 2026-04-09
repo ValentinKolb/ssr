@@ -56,7 +56,7 @@ describe("buildIslands()", () => {
 
     expect(existsSync(entryChunk)).toBe(true);
 
-    const app = honoRoutes({ dev: true, rootDir: workspaceRoot });
+    const app = honoRoutes({ dev: true, rootDir: workspaceRoot, basePath: "", ssrPath: "/_ssr" });
     const response = await app.request(`/${id}.js`);
 
     expect(response.status).toBe(200);

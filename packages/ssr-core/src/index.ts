@@ -12,6 +12,7 @@ import { transform } from "./transform";
 import { buildIslands } from "./build";
 import { join, dirname, resolve } from "path";
 import { resolveIslandImport } from "./island-resolve";
+import { normalizeBasePath, toSsrPath } from "./adapter/utils";
 // @ts-ignore - Bun text import
 import devClientCode from "./adapter/client.js" with { type: "text" };
 
@@ -46,6 +47,8 @@ export type SsrOptions<T extends object = object> = {
   verbose?: boolean;
   /** Project root for island discovery and dev _ssr assets (default: process.cwd()) */
   rootDir?: string;
+  /** Public app mount path for SSR assets and dev endpoints (default: "") */
+  basePath?: string;
   /** Modules to exclude from the island bundle (passed to Bun.build) */
   external?: string[];
   /** HTML template function (optional, has default) */
@@ -61,6 +64,8 @@ export type SsrConfig = {
   dev: boolean;
   verbose?: boolean;
   rootDir?: string;
+  basePath: string;
+  ssrPath: string;
 };
 
 export type HtmlFn<T extends object> = (element: JSX.Element, options?: T) => Promise<Response>;
@@ -105,8 +110,10 @@ export type SsrResult<T extends object> = {
  * ```
  */
 export const createConfig = <T extends object = object>(options: SsrOptions<T> = {}): SsrResult<T> => {
-  const { dev = false, verbose, external, template, rootDir: rootDirOption } = options;
+  const { dev = false, verbose, external, template, rootDir: rootDirOption, basePath: basePathOption } = options;
   const rootDir = resolve(rootDirOption ?? process.cwd());
+  const basePath = normalizeBasePath(basePathOption);
+  const ssrPath = toSsrPath(basePath);
 
   // Default template if none provided
   const htmlTemplate =
@@ -130,23 +137,29 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
     dev,
     verbose,
     rootDir,
+    basePath,
+    ssrPath,
   };
 
   const buildVersion = getBuildVersion(dev);
 
+  const islandDisplayStyle =
+    "<style>solid-client,solid-island{display:contents}</style>";
+
   // Hydration script - dynamically loads island/client bundles based on DOM
-  const hydrationScript = `<script type="module">const v=${JSON.stringify(buildVersion)};document.querySelectorAll('solid-island,solid-client').forEach(e=>import('/_ssr/'+e.dataset.id+'.js'+(v?'?v='+v:'')));</script>`;
+  const hydrationScript = `<script type="module">const p=${JSON.stringify(ssrPath)};const v=${JSON.stringify(buildVersion)};document.querySelectorAll('solid-island,solid-client').forEach(e=>import(p+'/'+e.dataset.id+'.js'+(v?'?v='+v:'')));</script>`;
+  const devConfigScript = `<script>globalThis.__SSR_CONFIG=${JSON.stringify({ ssrPath })}</script>`;
 
   // HTML renderer
   const html: HtmlFn<T> = async (element, opts = {} as T) => {
     const body = renderToString(() => element);
 
-    // Component scripts
-    let scripts = hydrationScript;
+    // Framework-injected assets
+    let scripts = `${islandDisplayStyle}\n${hydrationScript}`;
 
     // Add dev tools script in dev mode (inlined)
     if (dev) {
-      scripts += `\n<script type="module">${devClientCode}</script>`;
+      scripts += `\n${devConfigScript}\n<script type="module">${devClientCode}</script>`;
     }
 
     const content = await htmlTemplate({

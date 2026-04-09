@@ -3,8 +3,10 @@ if (!window.__ssr_reload) {
   window.__ssr_reload = true;
 
   (function () {
+    const ssrPath = globalThis.__SSR_CONFIG?.ssrPath || "/_ssr";
+
     // Settings
-    const STORAGE_KEY = "_ssr";
+    const STORAGE_KEY = `_ssr:${ssrPath}`;
     const defaults = {
       autoReload: true,
       highlightIslands: false,
@@ -24,9 +26,9 @@ if (!window.__ssr_reload) {
 
     const highlightCSS = (tag, color) => `
       ${tag} {
-        display: block;
+        display: block !important;
         box-shadow: 0 0 0 1px ${color} !important;
-        position: relative;
+        position: relative !important;
       }
       ${tag}::before {
         content: attr(data-file);
@@ -178,7 +180,7 @@ if (!window.__ssr_reload) {
     const start = () => {
       if (es) return;
       try {
-        es = new EventSource("/_ssr/_reload");
+        es = new EventSource(`${ssrPath}/_reload`);
         stopAnimation();
         badge.innerText = "[ssr]";
       } catch {
@@ -191,7 +193,7 @@ if (!window.__ssr_reload) {
         startAnimation();
         if (!settings.autoReload) return;
         reconnectInterval = setInterval(() => {
-          fetch("/_ssr/_ping")
+          fetch(`${ssrPath}/_ping`)
             .then((r) => r.ok && location.reload())
             .catch(() => {});
         }, 300);
