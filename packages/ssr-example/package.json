@@ -14,10 +14,7 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@babel/preset-typescript": "^7.24.0",
     "@types/bun": "latest",
-    "babel-preset-solid": "^1.8.0",
     "typescript": "^5.0.0"
   }
 }
