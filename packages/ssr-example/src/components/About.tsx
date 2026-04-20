@@ -3,7 +3,7 @@ import { ssr } from "../../config";
 export default ssr(async (c) => {
   c.get("page").title = "About";
 
-  return (
+  return () => (
     <main class="min-h-screen bg-neutral-950 text-neutral-300 font-mono p-6 text-sm">
       <div class="max-w-2xl mx-auto">
         <div class="border border-neutral-600 p-4 mb-6">

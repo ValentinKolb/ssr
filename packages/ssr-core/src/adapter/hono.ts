@@ -5,8 +5,7 @@
 import { Hono } from "hono";
 import { createFactory } from "hono/factory";
 import type { Context, Env, Handler, MiddlewareHandler, TypedResponse } from "hono";
-import type { JSX } from "solid-js";
-import type { SsrConfig, HtmlFn } from "../index";
+import type { SsrConfig, HtmlFn, RenderFn } from "../index";
 import { getSsrDir, getCacheHeaders, createReloadResponse, safePath } from "./utils";
 
 // ============================================================================
@@ -20,8 +19,8 @@ type PageEnv<T extends object> = {
   };
 };
 
-/** SSR handler return type - JSX element or Response (for redirects etc.) */
-type SsrHandlerResult = JSX.Element | Response | TypedResponse;
+/** SSR handler return type - render function or Response (for redirects etc.) */
+type SsrHandlerResult = RenderFn | Response | TypedResponse;
 
 /** SSR handler function signature */
 type SsrHandler<E extends Env, T extends object> = (
@@ -41,7 +40,7 @@ type SsrHandlers = [MiddlewareHandler, ...MiddlewareHandler[], Handler];
  * Features:
  * - Full compatibility with Hono middlewares/validators
  * - Type-safe page options via `c.get("page")`
- * - Return JSX directly or Response for redirects
+ * - Return a render function or Response for redirects
  * - No manual `html()` call needed
  *
  * @example
@@ -88,7 +87,7 @@ type SsrHandlers = [MiddlewareHandler, ...MiddlewareHandler[], Handler];
  *     c.get("page").title = room.name;
  *     c.get("page").description = `Welcome to ${room.name}`;
  *
- *     return <RoomView room={room} />;
+ *     return () => <RoomView room={room} />;
  *   }
  * );
  * ```
@@ -125,7 +124,7 @@ export const createSSRHandler = <T extends object>(html: HtmlFn<T>) => {
       await next();
     });
 
-    // Wrapped handler: JSX → html(), Response → passthrough
+    // Wrapped handler: render function → html(), Response → passthrough
     const wrappedHandler: Handler = async (c) => {
       const result = await finalHandler(c as Context<E & PageEnv<T>>);
 
@@ -134,8 +133,15 @@ export const createSSRHandler = <T extends object>(html: HtmlFn<T>) => {
         return result;
       }
 
-      // Otherwise treat as JSX element and render with html()
-      return html(result as JSX.Element, c.get("page") as T);
+      if (typeof result !== "function") {
+        throw new Error("[ssr] ssr() handlers must return a render function: return () => <Page />");
+      }
+
+      if (result.constructor.name === "AsyncFunction") {
+        throw new Error("[ssr] ssr() render functions must be synchronous: return () => <Page />");
+      }
+
+      return html(result as RenderFn, c.get("page") as T);
     };
 
     // Return tuple for spread: .get('/path', ...ssr(handler))
@@ -155,7 +161,7 @@ export const createSSRHandler = <T extends object>(html: HtmlFn<T>) => {
  * import { routes } from "@valentinkolb/ssr/adapter/hono";
  * const app = new Hono()
  *   .route("/_ssr", routes(config))
- *   .get("/", () => html(<Home />));
+ *   .get("/", () => html(() => <Home />));
  * ```
  */
 export const routes = (config: SsrConfig) => {

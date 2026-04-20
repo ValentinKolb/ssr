@@ -30,9 +30,30 @@ bun run dev:example
 - `.island.tsx` and `.client.tsx` must use default exports
 - nested island/client imports are unsupported and should stay treated as invalid usage
 - props must be `seroval`-serializable; this is broader than plain JSON but still excludes functions, DOM nodes, and arbitrary class instances
+- Since v0.9.0, `html()` and `ssr()` must keep JSX creation inside synchronous render functions so Solid SSR context exists for primitives like `createUniqueId()`
 - `_ssr/` is the filesystem artifact boundary; the public HTTP path is derived separately via `config.ssrPath`
 - island IDs must stay stable for the same source path; cache busting uses build timestamps, not content hashes
 - dev overlay/highlighting depends on `data-file` in dev mode and on the wrapper tags remaining present in SSR output
+
+## v0.9.0 Migration Note
+
+This release intentionally breaks the pre-v0.9.0 direct-JSX page API.
+
+```tsx
+// before v0.9.0
+export default ssr(async () => <Page />);
+app.get("/", () => html(<Page />));
+```
+
+Must become:
+
+```tsx
+// v0.9.0+
+export default ssr(async () => () => <Page />);
+app.get("/", () => html(() => <Page />));
+```
+
+The render function must be synchronous. Async work belongs in the request handler before returning `() => <Page />`.
 
 ## Adapter Guidance
 

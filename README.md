@@ -40,14 +40,14 @@ const { config, html } = createConfig({
 
 const ssr = createSSRHandler(html);
 
-const Home = ssr(async () => <button>hello</button>);
+const Home = ssr(async () => () => <button>hello</button>);
 
 export default new Hono()
   .route("/_ssr", routes(config))
   .get("/", ...Home);
 ```
 
-For installation, adapter setup, `createConfig()` options, and `basePath`, see [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
+Pages return a render function so Solid JSX is evaluated inside the SSR renderer. For installation, adapter setup, `createConfig()` options, `basePath`, and the v0.9.0 migration note, see [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
 
 ## Development
 

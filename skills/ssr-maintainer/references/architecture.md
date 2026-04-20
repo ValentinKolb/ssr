@@ -76,8 +76,10 @@ Shared helpers live in `src/adapter/utils.ts`:
 ### Hono adapter
 
 - `createSSRHandler(html)` returns the `ssr()` tuple helper
+- page handlers return a synchronous render function or a `Response`
 - `routes(config)` is intentionally relative and is mounted by the host app
 - when using `basePath`, the feature app is typically mounted under `config.basePath`, while SSR routes remain mounted inside that app at `/_ssr`
+- v0.9.0 intentionally rejects direct JSX handler results; this keeps JSX evaluation inside `renderToString()` so Solid SSR context is available
 
 ### Bun adapter
 

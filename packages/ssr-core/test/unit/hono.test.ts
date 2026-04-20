@@ -3,8 +3,9 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { Hono } from "hono";
+import { createUniqueId } from "solid-js";
 import { createSSRHandler, routes } from "../../src/adapter/hono";
-import type { HtmlFn } from "../../src/index";
+import { createConfig, type HtmlFn, type RenderFn } from "../../src/index";
 
 // ============================================================================
 // Mock html function for testing
@@ -16,11 +17,11 @@ type TestPageOptions = {
 };
 
 const createMockHtml = (): HtmlFn<TestPageOptions> => {
-  return async (element, options = {}) => {
+  return async (render, options = {}) => {
     // Simple mock that returns JSON with the options for testing
     return new Response(
       JSON.stringify({
-        element: String(element),
+        element: String(render()),
         options,
       }),
       {
@@ -45,7 +46,7 @@ describe("createSSRHandler", () => {
     const html = createMockHtml();
     const ssr = createSSRHandler(html);
 
-    const handlers = ssr(async () => "test" as any);
+    const handlers = ssr(async () => () => "test" as any);
 
     expect(Array.isArray(handlers)).toBe(true);
     expect(handlers.length).toBeGreaterThanOrEqual(2); // at least pageMiddleware + handler
@@ -58,7 +59,7 @@ describe("createSSRHandler", () => {
     const middleware1 = async (_c: any, next: any) => await next();
     const middleware2 = async (_c: any, next: any) => await next();
 
-    const handlers = ssr(middleware1, middleware2, async () => "test" as any);
+    const handlers = ssr(middleware1, middleware2, async () => () => "test" as any);
 
     // pageMiddleware + middleware1 + middleware2 + wrappedHandler
     expect(handlers.length).toBe(4);
@@ -72,7 +73,7 @@ describe("createSSRHandler", () => {
 
     const handlers = ssr(async (c) => {
       capturedPage = c.get("page");
-      return "test" as any;
+      return () => "test" as any;
     });
 
     const app = new Hono().get("/test", ...handlers);
@@ -88,7 +89,7 @@ describe("createSSRHandler", () => {
     const handlers = ssr(async (c) => {
       c.get("page").title = "Test Title";
       c.get("page").description = "Test Description";
-      return "test" as any;
+      return () => "test" as any;
     });
 
     const app = new Hono().get("/test", ...handlers);
@@ -101,13 +102,13 @@ describe("createSSRHandler", () => {
     });
   });
 
-  test("JSX element is passed to html function", async () => {
+  test("render function output is passed to html function", async () => {
     const html = createMockHtml();
     const ssr = createSSRHandler(html);
 
     const testElement = "Hello World";
 
-    const handlers = ssr(async () => testElement as any);
+    const handlers = ssr(async () => () => testElement as any);
 
     const app = new Hono().get("/test", ...handlers);
     const response = await app.request("/test");
@@ -158,7 +159,7 @@ describe("createSSRHandler", () => {
 
     const handlers = ssr(middleware1, middleware2, async () => {
       order.push(0); // Handler runs in the middle
-      return "test" as any;
+      return () => "test" as any;
     });
 
     const app = new Hono().get("/test", ...handlers);
@@ -181,9 +182,7 @@ describe("createSSRHandler", () => {
       await next();
     };
 
-    const handlers = ssr(middleware, async (c) => {
-      return "test" as any;
-    });
+    const handlers = ssr(middleware, async () => () => "test" as any);
 
     const app = new Hono().get("/test", ...handlers);
     const response = await app.request("/test");
@@ -199,7 +198,7 @@ describe("createSSRHandler", () => {
 
     const pageHandler = ssr(async (c) => {
       c.get("page").title = "Spread Test";
-      return "content" as any;
+      return () => "content" as any;
     });
 
     // This is the intended usage pattern
@@ -219,7 +218,7 @@ describe("createSSRHandler", () => {
       // Simulate async operation
       await new Promise((resolve) => setTimeout(resolve, 10));
       c.get("page").title = "Async Title";
-      return "async content" as any;
+      return () => "async content" as any;
     });
 
     const app = new Hono().get("/test", ...handlers);
@@ -227,6 +226,32 @@ describe("createSSRHandler", () => {
     const result = await response.json();
 
     expect(result.options.title).toBe("Async Title");
+  });
+
+  test("renders createUniqueId() inside Solid SSR context", async () => {
+    const { html } = createConfig({ dev: false });
+    const ssr = createSSRHandler(html);
+
+    const handlers = ssr(async () => () => createUniqueId() as any);
+    const app = new Hono().get("/test", ...handlers);
+    const response = await app.request("/test");
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("0");
+  });
+
+  test("rejects handlers that return already evaluated JSX", async () => {
+    const html = createMockHtml();
+    const ssr = createSSRHandler(html);
+
+    const handlers = ssr(async () => "content" as unknown as RenderFn);
+    const app = new Hono()
+      .onError((error, c) => c.text(error.message, 500))
+      .get("/test", ...handlers);
+    const response = await app.request("/test");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain("must return a render function");
   });
 });
 

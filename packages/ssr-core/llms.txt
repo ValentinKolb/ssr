@@ -32,7 +32,7 @@ Monorepo root:
 
 - `src/adapter/*`
   - Bun, Hono, Elysia adapters
-  - serve built chunks from `/_ssr/*.js`
+  - serve built chunks from `config.ssrPath`
 
 ## Conventions
 
@@ -56,11 +56,31 @@ Use this when entrypoint package differs from island package location.
 ```tsx
 export default ssr(async (c) => {
   c.get("page").title = "Home";
-  return <Page />;
+  return () => <Page />;
 });
 ```
 
 Supports middlewares/validators before final handler.
+
+## Rendering API migration
+
+Since v0.9.0, `html()` and Hono `ssr()` handlers require synchronous render functions.
+
+Use:
+
+```tsx
+export default ssr(async () => () => <Page />);
+app.get("/", () => html(() => <Page />));
+```
+
+Do not use the pre-v0.9.0 direct JSX style:
+
+```tsx
+export default ssr(async () => <Page />);
+app.get("/", () => html(<Page />));
+```
+
+Reason: JSX must be created inside `renderToString()` so Solid SSR context exists for primitives such as `createUniqueId()`. Async work belongs in the handler before returning `() => <Page />`; the render function itself must stay synchronous.
 
 ## Local example app
 

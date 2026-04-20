@@ -23,7 +23,7 @@ type Routes = Record<string, RouteHandler>;
  * serve({
  *   routes: {
  *     ...routes(config),
- *     "/": () => html(<Home />),
+ *     "/": () => html(() => <Home />),
  *   },
  * });
  * ```

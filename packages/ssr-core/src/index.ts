@@ -68,7 +68,9 @@ export type SsrConfig = {
   ssrPath: string;
 };
 
-export type HtmlFn<T extends object> = (element: JSX.Element, options?: T) => Promise<Response>;
+export type RenderFn = () => JSX.Element;
+
+export type HtmlFn<T extends object> = (render: RenderFn, options?: T) => Promise<Response>;
 
 type PluginFn = () => BunPlugin;
 
@@ -151,8 +153,12 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
   const devConfigScript = `<script>globalThis.__SSR_CONFIG=${JSON.stringify({ ssrPath })}</script>`;
 
   // HTML renderer
-  const html: HtmlFn<T> = async (element, opts = {} as T) => {
-    const body = renderToString(() => element);
+  const html: HtmlFn<T> = async (render, opts = {} as T) => {
+    if (render.constructor.name === "AsyncFunction") {
+      throw new Error("[ssr] html() expects a synchronous render function: html(() => <Page />)");
+    }
+
+    const body = renderToString(render);
 
     // Framework-injected assets
     let scripts = `${islandDisplayStyle}\n${hydrationScript}`;

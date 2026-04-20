@@ -145,7 +145,7 @@ import Counter from "../components/Counter.island";
 
 export default ssr(async (c) => {
   c.get("page").title = "Home";
-  return <Counter initial={5} />;
+  return () => <Counter initial={5} />;
 });
 ```
 
@@ -173,6 +173,45 @@ NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts
 - Bun: `@valentinkolb/ssr/bun`
 - Hono: `@valentinkolb/ssr/hono`
 - Elysia: `@valentinkolb/ssr/elysia`
+
+## Rendering API
+
+`html()` and Hono `ssr()` handlers expect a synchronous render function:
+
+```tsx
+export default ssr(async (c) => {
+  const data = await loadData();
+  c.get("page").title = data.title;
+
+  return () => <Page data={data} />;
+});
+
+app.get("/", () => html(() => <Page />));
+```
+
+Do async work in the handler before returning the render function. Do not make the render function itself `async`; Solid SSR expects synchronous JSX evaluation.
+
+### v0.9.0 migration
+
+This is a breaking change in v0.9.0. In v0.8.x and earlier, examples often returned already-created JSX:
+
+```tsx
+// v0.8.x and earlier
+export default ssr(async () => <Page />);
+
+app.get("/", () => html(<Page />));
+```
+
+In v0.9.0, wrap JSX creation in a render function:
+
+```tsx
+// v0.9.0+
+export default ssr(async () => () => <Page />);
+
+app.get("/", () => html(() => <Page />));
+```
+
+This ensures Solid primitives such as `createUniqueId()` run inside `renderToString()`, where the SSR context exists.
 
 ## `createConfig` options
 
@@ -206,7 +245,7 @@ export const { config, html } = createConfig({
 // docs-app.ts
 const docsApp = new Hono()
   .route("/_ssr", routes(config))
-  .get("/", () => html(<DocsHome />));
+  .get("/", () => html(() => <DocsHome />));
 
 // host-app.ts
 export default new Hono().route("/docs", docsApp);
@@ -234,7 +273,7 @@ await Bun.build({
 
 - initializes `c.get("page")` as typed page options
 - accepts middlewares/validators before final handler
-- lets handlers return either JSX or `Response`
+- lets handlers return either a synchronous render function or `Response`
 
 ## Dev mode tools
 

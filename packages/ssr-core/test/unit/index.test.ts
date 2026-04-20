@@ -4,7 +4,7 @@ import { createConfig } from "../../src/index";
 describe("createConfig() cache busting", () => {
   test("injects build version for production hydration imports", async () => {
     const { html } = createConfig({ dev: false });
-    const response = await html("content" as any);
+    const response = await html(() => "content" as any);
     const output = await response.text();
 
     expect(output).toContain("<style>solid-client,solid-island{display:contents}</style>");
@@ -15,7 +15,7 @@ describe("createConfig() cache busting", () => {
 
   test("keeps hydration imports unversioned in dev mode", async () => {
     const { html } = createConfig({ dev: true });
-    const response = await html("content" as any);
+    const response = await html(() => "content" as any);
     const output = await response.text();
 
     expect(output).toContain('const v=""');
@@ -23,7 +23,7 @@ describe("createConfig() cache busting", () => {
 
   test("uses basePath for hydration imports and dev config", async () => {
     const { html } = createConfig({ dev: true, basePath: "/docs" });
-    const response = await html("content" as any);
+    const response = await html(() => "content" as any);
     const output = await response.text();
 
     expect(output).toContain('const p="/docs/_ssr"');
@@ -32,7 +32,7 @@ describe("createConfig() cache busting", () => {
 
   test("normalizes trailing slashes in basePath", async () => {
     const { html } = createConfig({ dev: false, basePath: "/docs/" });
-    const response = await html("content" as any);
+    const response = await html(() => "content" as any);
     const output = await response.text();
 
     expect(output).toContain('const p="/docs/_ssr"');
@@ -40,5 +40,13 @@ describe("createConfig() cache busting", () => {
 
   test("rejects invalid basePath values", () => {
     expect(() => createConfig({ basePath: "docs" })).toThrow(/basePath must start with "\/" or be empty/);
+  });
+
+  test("rejects async render functions", async () => {
+    const { html } = createConfig({ dev: false });
+
+    await expect(html(async () => "content" as any)).rejects.toThrow(
+      "html() expects a synchronous render function",
+    );
   });
 });

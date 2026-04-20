@@ -20,7 +20,7 @@ import {
  * import { routes } from "@valentinkolb/ssr/adapter/elysia";
  * new Elysia()
  *   .use(routes(config))
- *   .get("/", () => html(<Home />))
+ *   .get("/", () => html(() => <Home />))
  *   .listen(3000);
  * ```
  */

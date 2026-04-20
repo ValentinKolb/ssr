@@ -88,6 +88,50 @@ Rules:
 
 `seroval` supports more than JSON, including values like `Date`, `RegExp`, `Map`, and `Set`, but still excludes functions, DOM nodes, and arbitrary class instances.
 
+## Pages
+
+`ssr()` page handlers return a synchronous render function, not already-created JSX:
+
+```tsx
+export default ssr(async (c) => {
+  c.get("page").title = "Home";
+  const data = await loadData();
+
+  return () => <Home data={data} />;
+});
+```
+
+Use the handler body for async work, redirects, and page metadata. Keep JSX creation inside the returned render function so Solid SSR primitives such as `createUniqueId()` run inside `renderToString()`.
+
+### v0.9.0 Breaking Change
+
+For migrations, check for the old direct-JSX style from v0.8.x and earlier:
+
+```tsx
+// before v0.9.0
+export default ssr(async () => <Page />);
+app.get("/", () => html(<Page />));
+```
+
+Convert it to render functions:
+
+```tsx
+// v0.9.0+
+export default ssr(async () => () => <Page />);
+app.get("/", () => html(() => <Page />));
+```
+
+Do async data loading before the returned render function:
+
+```tsx
+export default ssr(async (c) => {
+  const data = await loadData();
+  return () => <Page data={data} />;
+});
+```
+
+Do not return an async render function. The render function is called by `renderToString()` and must synchronously create JSX.
+
 ## `createConfig()` Options
 
 ```ts
@@ -105,6 +149,7 @@ Notes:
 
 - set `rootDir` when your config and island files live in different workspace packages
 - `basePath` moves SSR asset URLs and dev endpoints under that public prefix
+- `html()` accepts a synchronous render function: `html(() => <Page />)`
 - `html()` always injects framework assets, including the SSR loader and wrapper styling
 
 ## Hono and `basePath`
@@ -155,5 +200,6 @@ For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` 
 - missing `rootDir` in a monorepo leads to missing island discovery
 - missing SSR route mounting leads to 404s for island chunks
 - placing `${scripts}` outside the rendered HTML body can break client loading
+- returning direct JSX from `ssr()` is invalid; return `() => <Page />`
 - importing server-only modules into islands or client components can break browser bundling
 - named exports for islands/clients are not supported

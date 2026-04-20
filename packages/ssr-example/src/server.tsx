@@ -15,6 +15,6 @@ const app = new Hono()
   .use("/public/*", serveStatic({ root: "./" }))
   .get("/", ...Home)
   .get("/about", ...About)
-  .get("/api-test", () => html(<ApiFetchIsland />));
+  .get("/api-test", () => html(() => <ApiFetchIsland />));
 
 export default app;
