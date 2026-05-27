@@ -34,12 +34,12 @@
   "dependencies": {
     "@babel/core": "^7.24.0",
     "@babel/preset-typescript": "^7.24.0",
+    "@types/babel__core": "^7.20.5",
     "babel-preset-solid": "^1.8.0",
     "seroval": "^1.0.0"
   },
   "devDependencies": {
     "@elysiajs/static": "^1.2.0",
-    "@types/babel__core": "^7.20.5",
     "@types/bun": "latest",
     "elysia": "^1.2.0",
     "hono": "^4.6.14",

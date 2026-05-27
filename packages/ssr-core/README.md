@@ -288,7 +288,7 @@ It can:
 ## Limitations
 
 - islands must use default export
-- props must be serializable (via `seroval`)
+- props must be serializable via `seroval`; do not pass functions, callbacks, event handlers, Solid signals/stores, DOM nodes, or class instances as island/client props
 - nested island/client imports are not supported
 
 ## Local monorepo example

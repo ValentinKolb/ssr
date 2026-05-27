@@ -88,6 +88,26 @@ Rules:
 
 `seroval` supports more than JSON, including values like `Date`, `RegExp`, `Map`, and `Set`, but still excludes functions, DOM nodes, and arbitrary class instances.
 
+## Island Prop Boundary
+
+Island and client component props cross a server-to-browser serialization boundary.
+
+Do not pass functions, callbacks, event handlers, Solid signals/stores, DOM nodes, or class instances as props to `*.island.tsx` or `*.client.tsx` components. Props are serialized with `seroval`, so these values will fail at render time.
+
+Bad:
+
+```tsx
+<Counter onChange={(value) => save(value)} />
+```
+
+Good:
+
+```tsx
+<Counter initial={count} />
+```
+
+Put interactive behavior inside the island/client component. For server effects, pass serializable data such as IDs, URLs, action names, or initial state, then call an API route, submit a form, or update client state from inside the island.
+
 ## Pages
 
 `ssr()` page handlers return a synchronous render function, not already-created JSX:
@@ -201,5 +221,6 @@ For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` 
 - missing SSR route mounting leads to 404s for island chunks
 - placing `${scripts}` outside the rendered HTML body can break client loading
 - returning direct JSX from `ssr()` is invalid; return `() => <Page />`
+- passing callbacks or event handlers as island/client props fails because props must be serialized
 - importing server-only modules into islands or client components can break browser bundling
 - named exports for islands/clients are not supported
