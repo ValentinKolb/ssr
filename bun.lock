@@ -6,7 +6,7 @@
     },
     "packages/ssr-core": {
       "name": "@valentinkolb/ssr",
-      "version": "0.0.1",
+      "version": "0.9.1",
       "dependencies": {
         "@babel/core": "^7.24.0",
         "@babel/preset-typescript": "^7.24.0",
