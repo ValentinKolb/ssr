@@ -1,6 +1,6 @@
 {
   "name": "@valentinkolb/ssr",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Minimal SSR framework for SolidJS and Bun",
   "type": "module",
   "main": "src/index.ts",
@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./bun": "./src/adapter/bun.ts",
     "./elysia": "./src/adapter/elysia.ts",
-    "./hono": "./src/adapter/hono.ts"
+    "./hono": "./src/adapter/hono.ts",
+    "./nav": "./src/nav.ts"
   },
   "scripts": {
     "test": "bun test"

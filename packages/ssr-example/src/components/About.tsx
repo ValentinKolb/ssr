@@ -59,6 +59,12 @@ export default ssr(async (c) => {
           >
             [api-test]
           </a>
+          <a
+            href="/nav-demo"
+            class="border border-neutral-700 px-4 py-2 text-neutral-400 hover:bg-neutral-900 hover:text-white"
+          >
+            [nav-demo]
+          </a>
         </div>
       </div>
     </main>

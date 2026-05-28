@@ -34,6 +34,11 @@ Monorepo root:
   - Bun, Hono, Elysia adapters
   - serve built chunks from `config.ssrPath`
 
+- `src/nav.ts`
+  - optional `@valentinkolb/ssr/nav` subpath
+  - exports `Link`, `navigate`, document navigation helpers, scroll snapshot helpers, and view-transition wrapper
+  - not a router; no route matching, loaders, or server page re-rendering
+
 ## Conventions
 
 - `*.island.tsx`: SSR + hydrated
@@ -85,6 +90,10 @@ Reason: JSX must be created inside `renderToString()` so Solid SSR context exist
 ## Local example app
 
 See `packages/ssr-example` for the current reference setup.
+
+`/nav-demo` demonstrates `@valentinkolb/ssr/nav`: same-origin links update
+client state and browser history while preserving island state and keyed scroll
+regions.
 
 Useful workspace commands (from repo root):
 

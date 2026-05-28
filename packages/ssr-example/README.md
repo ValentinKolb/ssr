@@ -2,6 +2,10 @@
 
 Hono-only demo app for `@valentinkolb/ssr` inside this workspace.
 
+It includes `/nav-demo`, which demonstrates `@valentinkolb/ssr/nav` preserving
+client-side island state and keyed scroll containers while updating browser
+history.
+
 Pages in this example use the v0.9.0 rendering API:
 
 ```tsx

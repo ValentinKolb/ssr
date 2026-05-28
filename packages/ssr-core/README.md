@@ -42,12 +42,16 @@ What is intentionally not included:
 - no build tool wrapper around Bun
 
 Use the libraries you already prefer. This package only handles SSR and islands hydration.
+The optional `@valentinkolb/ssr/nav` subpath provides progressive anchor
+enhancement for islands, but it still does not add route matching, loaders, or
+SPA routing.
 
 ## Features
 
 - Small SSR core with Bun-native build/plugin flow
 - Adapters for Bun, Hono, and Elysia
 - Type-safe Hono page helper via `createSSRHandler`
+- Optional progressive navigation helpers via `@valentinkolb/ssr/nav`
 - Monorepo support via `rootDir`
 - Public path mounting via `basePath` for microfrontends
 - Stable file-path-based island IDs (collision-safe across workspace packages)
@@ -173,6 +177,48 @@ NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts
 - Bun: `@valentinkolb/ssr/bun`
 - Hono: `@valentinkolb/ssr/hono`
 - Elysia: `@valentinkolb/ssr/elysia`
+
+## Optional Navigation Helpers
+
+`@valentinkolb/ssr/nav` is an opt-in browser helper for islands that want to
+update URL history after they have already updated client state.
+
+```tsx
+import { createSignal } from "solid-js";
+import { Link, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+
+export default function Tabs() {
+  const [tab, setTab] = createSignal("alpha");
+
+  const openTab = (nav: LinkNavigateEvent) => {
+    const next = nav.url.searchParams.get("tab") ?? "alpha";
+    setTab(next);
+    nav.replaceWith(`/demo?tab=${next}`, { scroll: "preserve" });
+  };
+
+  return (
+    <Link href="/demo?tab=beta" scroll="preserve" onNavigate={openTab}>
+      Open beta
+    </Link>
+  );
+}
+```
+
+`Link` renders a real `<a href>` during SSR. Enhanced clicks only run in the
+browser for same-origin, left-click navigation without modifier keys. Without
+`onNavigate`, `Link` calls `navigate()` directly and only updates browser
+history. With `onNavigate`, the island owns data loading and state updates, then
+calls `nav.push()`, `nav.replaceWith()`, or `nav.fallback()`.
+
+Available exports:
+
+- `Link`
+- `navigate()`, `navigateTo()`, `documentNavigate()`, `refreshCurrentPath()`
+- `captureScroll()`, `restoreScroll()`, `startViewTransition()`
+- `LinkNavigateEvent`, `LinkProps`, `EnhancedNavigateOptions`, `NavigationScrollMode`, `ScrollSnapshot`
+
+Use `data-scroll-preserve="stable-key"` on scroll containers that should keep
+their scroll position across enhanced navigation.
 
 ## Rendering API
 

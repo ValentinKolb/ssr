@@ -29,6 +29,7 @@ Location: `packages/ssr-core/test/unit/`
 | `hono.test.ts` | `createSSRHandler`, middleware ordering, mounted Hono behavior |
 | `utils.test.ts` | basePath normalization, cache headers, safePath |
 | `adapter-paths.test.ts` | Bun/Elysia SSR public paths |
+| `nav.test.ts` | opt-in navigation helpers, history, scroll preservation, SSR anchor output |
 | `hash.test.ts` | hash determinism |
 
 ## Patterns

@@ -1,6 +1,6 @@
 ---
 name: ssr
-description: Build apps with @valentinkolb/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, serialization, or client re-render behavior.
+description: Build apps with @valentinkolb/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, opt-in @valentinkolb/ssr/nav progressive navigation, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, serialization, client re-render behavior, or enhanced same-origin links.
 ---
 
 # @valentinkolb/ssr User Guide
@@ -202,6 +202,32 @@ The important invariant is that `config.basePath` must match the host mount path
 
 For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` does not require extra manual route wiring.
 
+## Optional `@valentinkolb/ssr/nav`
+
+Use `@valentinkolb/ssr/nav` only when an island/client component needs progressive same-origin navigation without a document reload.
+
+```tsx
+import { Link, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+
+const openTab = (nav: LinkNavigateEvent) => {
+  const tab = nav.url.searchParams.get("tab") ?? "alpha";
+  setTab(tab);
+  nav.replaceWith(`/demo?tab=${tab}`, { scroll: "preserve" });
+};
+
+<Link href="/demo?tab=beta" scroll="preserve" onNavigate={openTab}>
+  Open beta
+</Link>;
+```
+
+Rules:
+
+- `Link` is a real SSR-safe `<a href>` and works without JavaScript as a normal link
+- this is not a router; do not expect route matching, nested routes, loaders, or server re-rendering
+- with `onNavigate`, update island state or load data first, then call `nav.push()`, `nav.replaceWith()`, or `nav.fallback()`
+- use `data-scroll-preserve="stable-key"` for scroll containers that should keep position
+- do not pass `onNavigate` from a server page into an island prop; define navigation callbacks inside the island/client component
+
 ## TypeScript Settings
 
 ```json
@@ -222,5 +248,6 @@ For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` 
 - placing `${scripts}` outside the rendered HTML body can break client loading
 - returning direct JSX from `ssr()` is invalid; return `() => <Page />`
 - passing callbacks or event handlers as island/client props fails because props must be serialized
+- treating `@valentinkolb/ssr/nav` as a full router leads to stale server data; it only enhances anchors after client state is handled
 - importing server-only modules into islands or client components can break browser bundling
 - named exports for islands/clients are not supported

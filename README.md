@@ -13,6 +13,7 @@ Published as `@valentinkolb/ssr`.
 - SSR core with Bun-native build/plugin flow
 - islands and client-only components via file conventions
 - adapters for Bun, Hono, and Elysia
+- optional progressive navigation helpers via `@valentinkolb/ssr/nav`
 - monorepo support via `rootDir`
 - microfrontend support via `basePath`
 
@@ -23,7 +24,7 @@ See the full package docs in [packages/ssr-core/README.md](/Users/valentinkolb/G
 Reference Hono app using the local workspace package.
 
 - uses `createSSRHandler`
-- includes islands, client-only components, and API calls
+- includes islands, client-only components, API calls, and an opt-in nav demo
 
 See [packages/ssr-example/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-example/README.md).
 

@@ -7,6 +7,7 @@ import { api } from "./api";
 import Home from "./components/Home";
 import About from "./components/About";
 import ApiFetchIsland from "./components/ApiFetch.island";
+import NavDemo from "./components/NavDemo";
 
 const app = new Hono()
   .use(logger())
@@ -15,6 +16,7 @@ const app = new Hono()
   .use("/public/*", serveStatic({ root: "./" }))
   .get("/", ...Home)
   .get("/about", ...About)
-  .get("/api-test", () => html(() => <ApiFetchIsland />));
+  .get("/api-test", () => html(() => <ApiFetchIsland />))
+  .get("/nav-demo", ...NavDemo);
 
 export default app;

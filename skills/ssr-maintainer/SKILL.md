@@ -34,6 +34,7 @@ bun run dev:example
 - `_ssr/` is the filesystem artifact boundary; the public HTTP path is derived separately via `config.ssrPath`
 - island IDs must stay stable for the same source path; cache busting uses build timestamps, not content hashes
 - dev overlay/highlighting depends on `data-file` in dev mode and on the wrapper tags remaining present in SSR output
+- `@valentinkolb/ssr/nav` must remain an opt-in progressive navigation helper, not a router with route matching, loaders, or server re-rendering
 
 ## v0.9.0 Migration Note
 
@@ -85,3 +86,12 @@ When modifying it:
 - `dedupeSharedChunkExports()` is a production-only workaround for Bun shared-chunk duplicate exports
 - `import(\`${path}?\`)` is required for Bun watch registration
 - `ensureIslands()` still needs the `build.onLoad` fallback because `Bun.plugin()` does not reliably provide `onStart`
+
+## Nav Guidance
+
+When changing `src/nav.ts`:
+
+- keep top-level code SSR-safe; browser globals may be used only inside event handlers or helper calls
+- keep `Link` rendering a real `<a href>` during SSR
+- preserve normal browser behavior for modifier keys, non-left clicks, downloads, and external targets
+- test history push/replace, scroll snapshot behavior, and SSR anchor output
