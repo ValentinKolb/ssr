@@ -86,8 +86,8 @@ export default function NavDemo(props: Props) {
             <div
               data-scroll-preserve="nav-demo-list"
               onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-              class="border border-neutral-800 bg-neutral-950"
-              style="height: 16rem; overflow: auto;"
+              class="nav-demo-scroll border border-neutral-800 bg-neutral-950"
+              style="height: 16rem; overflow: auto; scrollbar-color: #525252 #0a0a0a; scrollbar-width: thin;"
             >
               <For each={items()}>
                 {(item) => (

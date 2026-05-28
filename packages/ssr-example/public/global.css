@@ -3,6 +3,23 @@
 @layer properties;
 @layer theme, base, components, utilities;
 
+.nav-demo-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.nav-demo-scroll::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.nav-demo-scroll::-webkit-scrollbar-thumb {
+  background: #525252;
+  border: 2px solid #0a0a0a;
+}
+
+.nav-demo-scroll::-webkit-scrollbar-thumb:hover {
+  background: #737373;
+}
+
 @layer theme {
   :root, :host {
     --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
