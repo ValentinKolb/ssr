@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToString } from "solid-js/web";
-import { captureScroll, currentPathWithQuery, Link, navigate, restoreScroll, startViewTransition } from "../../src/nav";
+import {
+  captureScroll,
+  currentPathWithQuery,
+  Link,
+  listenPopState,
+  navigate,
+  restoreScroll,
+  startViewTransition,
+} from "../../src/nav";
 
 const originalWindow = globalThis.window;
 const originalDocument = globalThis.document;
@@ -12,18 +20,30 @@ type ScrollRegion = {
   scrollTop: number;
 };
 
-const setupBrowserMocks = (options: { href?: string; regions?: ScrollRegion[]; startViewTransition?: boolean } = {}) => {
+const setupBrowserMocks = (
+  options: {
+    baseURI?: string;
+    href?: string;
+    historyState?: unknown;
+    regions?: ScrollRegion[];
+    startViewTransition?: boolean;
+  } = {},
+) => {
   const regions = options.regions ?? [];
   const scrollCalls: Array<[number, number]> = [];
-  const historyCalls: Array<{ kind: "push" | "replace"; url: string }> = [];
+  const historyCalls: Array<{ kind: "push" | "replace"; state: unknown; url: string }> = [];
   const assigned: string[] = [];
   const replaced: string[] = [];
+  const popStateListeners = new Set<(event: PopStateEvent) => void>();
   let currentHref = options.href ?? "https://example.test/app?page=1#hash";
+  let currentState = options.historyState ?? null;
 
   const windowMock = {
     get location() {
+      const url = new URL(currentHref);
       return {
         href: currentHref,
+        origin: url.origin,
         assign: (href: string) => assigned.push(href),
         replace: (href: string) => replaced.push(href),
       };
@@ -32,18 +52,32 @@ const setupBrowserMocks = (options: { href?: string; regions?: ScrollRegion[]; s
     scrollY: 34,
     scrollTo: (x: number, y: number) => scrollCalls.push([x, y]),
     history: {
-      pushState: (_state: unknown, _title: string, url: string) => {
-        historyCalls.push({ kind: "push", url });
+      get state() {
+        return currentState;
+      },
+      pushState: (state: unknown, _title: string, url: string) => {
+        historyCalls.push({ kind: "push", state, url });
+        currentState = state;
         currentHref = `https://example.test${url}`;
       },
-      replaceState: (_state: unknown, _title: string, url: string) => {
-        historyCalls.push({ kind: "replace", url });
+      replaceState: (state: unknown, _title: string, url: string) => {
+        historyCalls.push({ kind: "replace", state, url });
+        currentState = state;
         currentHref = `https://example.test${url}`;
       },
+    },
+    addEventListener: (type: string, listener: (event: PopStateEvent) => void) => {
+      if (type === "popstate") popStateListeners.add(listener);
+    },
+    removeEventListener: (type: string, listener: (event: PopStateEvent) => void) => {
+      if (type === "popstate") popStateListeners.delete(listener);
     },
   };
 
   const documentMock = {
+    get baseURI() {
+      return options.baseURI ?? currentHref;
+    },
     querySelectorAll: () => regions,
     querySelector: (selector: string) =>
       regions.find((region) => selector === `[data-scroll-preserve="${region.dataset.scrollPreserve}"]`) ?? null,
@@ -54,7 +88,14 @@ const setupBrowserMocks = (options: { href?: string; regions?: ScrollRegion[]; s
   globalThis.document = documentMock as unknown as Document;
   globalThis.CSS = { escape: (value: string) => value } as unknown as typeof CSS;
 
-  return { assigned, replaced, historyCalls, regions, scrollCalls };
+  const emitPopState = (href: string, state: unknown) => {
+    currentHref = new URL(href, currentHref).href;
+    currentState = state;
+    const event = { state } as PopStateEvent;
+    for (const listener of popStateListeners) listener(event);
+  };
+
+  return { assigned, emitPopState, replaced, historyCalls, regions, scrollCalls };
 };
 
 afterEach(() => {
@@ -65,12 +106,24 @@ afterEach(() => {
 
 describe("@valentinkolb/ssr/nav", () => {
   test("renders Link as a real anchor during SSR", () => {
-    const html = renderToString(() => Link({ href: "/target", class: "link", children: "Open" }));
+    const html = renderToString(() =>
+      Link({
+        href: "/target",
+        replace: true,
+        scroll: "preserve",
+        onNavigate: () => undefined,
+        class: "link",
+        children: "Open",
+      }),
+    );
 
     expect(html).toContain("<a ");
     expect(html).toContain('href="/target"');
     expect(html).toContain('class="link');
     expect(html).toContain(">Open</a>");
+    expect(html).not.toContain("replace=");
+    expect(html).not.toContain("scroll=");
+    expect(html).not.toContain("onNavigate=");
   });
 
   test("currentPathWithQuery excludes the URL hash", () => {
@@ -101,18 +154,60 @@ describe("@valentinkolb/ssr/nav", () => {
 
     navigate("/app?tab=two", { scroll: "top", scrollSnapshot: snapshot, viewTransition: false });
 
-    expect(historyCalls).toEqual([{ kind: "push", url: "/app?tab=two" }]);
+    expect(historyCalls).toEqual([{ kind: "push", state: null, url: "/app?tab=two" }]);
     expect(region.scrollTop).toBe(120);
     expect(scrollCalls).toEqual([[0, 0]]);
   });
 
-  test("navigate can replace history and preserve window scroll", () => {
-    const { historyCalls, scrollCalls } = setupBrowserMocks();
+  test("navigate can replace history without discarding existing state", () => {
+    const existingState = { owner: "host-app" };
+    const { historyCalls, scrollCalls } = setupBrowserMocks({ historyState: existingState });
 
     navigate("/app?tab=two#details", { replace: true, scroll: "preserve", viewTransition: false });
 
-    expect(historyCalls).toEqual([{ kind: "replace", url: "/app?tab=two#details" }]);
+    expect(historyCalls).toEqual([{ kind: "replace", state: existingState, url: "/app?tab=two#details" }]);
     expect(scrollCalls).toEqual([[12, 34]]);
+  });
+
+  test("navigate supports explicit history state", () => {
+    const { historyCalls } = setupBrowserMocks();
+    const state = { tab: "two" };
+
+    navigate("/app?tab=two", { state, viewTransition: false });
+
+    expect(historyCalls).toEqual([{ kind: "push", state, url: "/app?tab=two" }]);
+  });
+
+  test("navigate resolves relative URLs against document.baseURI", () => {
+    const { historyCalls } = setupBrowserMocks({
+      baseURI: "https://example.test/base/",
+      href: "https://example.test/current/page",
+    });
+
+    navigate("child?tab=two", { viewTransition: false });
+
+    expect(historyCalls).toEqual([{ kind: "push", state: null, url: "/base/child?tab=two" }]);
+  });
+
+  test("navigate falls back to document navigation for cross-origin URLs", () => {
+    const { assigned, historyCalls } = setupBrowserMocks();
+
+    navigate("https://other.test/path", { viewTransition: false });
+
+    expect(assigned).toEqual(["https://other.test/path"]);
+    expect(historyCalls).toEqual([]);
+  });
+
+  test("listenPopState reports Back/Forward URLs and can unsubscribe", () => {
+    const { emitPopState } = setupBrowserMocks();
+    const navigations: Array<{ state: unknown; url: string }> = [];
+    const unsubscribe = listenPopState(({ state, url }) => navigations.push({ state, url: url.href }));
+
+    emitPopState("/app?tab=two", { tab: "two" });
+    unsubscribe();
+    emitPopState("/app?tab=three", { tab: "three" });
+
+    expect(navigations).toEqual([{ state: { tab: "two" }, url: "https://example.test/app?tab=two" }]);
   });
 
   test("startViewTransition uses the browser API when available", () => {

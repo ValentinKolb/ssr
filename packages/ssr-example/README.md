@@ -4,7 +4,8 @@ Hono-only demo app for `@valentinkolb/ssr` inside this workspace.
 
 It includes `/nav-demo`, which demonstrates `@valentinkolb/ssr/nav` preserving
 client-side island state and keyed scroll containers while updating browser
-history.
+history. The demo also reconciles its active view when the user navigates Back
+or Forward.
 
 Pages in this example use the v0.9.0 rendering API:
 

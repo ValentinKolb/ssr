@@ -184,16 +184,24 @@ NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts
 update URL history after they have already updated client state.
 
 ```tsx
-import { createSignal } from "solid-js";
-import { Link, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { createSignal, onCleanup, onMount } from "solid-js";
+import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
 
 export default function Tabs() {
   const [tab, setTab] = createSignal("alpha");
 
+  onMount(() => {
+    onCleanup(
+      listenPopState(({ url }) => {
+        setTab(url.searchParams.get("tab") ?? "alpha");
+      }),
+    );
+  });
+
   const openTab = (nav: LinkNavigateEvent) => {
     const next = nav.url.searchParams.get("tab") ?? "alpha";
     setTab(next);
-    nav.replaceWith(`/demo?tab=${next}`, { scroll: "preserve" });
+    nav.push(`/demo?tab=${next}`, { scroll: "preserve", state: { tab: next } });
   };
 
   return (
@@ -210,12 +218,28 @@ browser for same-origin, left-click navigation without modifier keys. Without
 history. With `onNavigate`, the island owns data loading and state updates, then
 calls `nav.push()`, `nav.replaceWith()`, or `nav.fallback()`.
 
+Use `listenPopState()` whenever `nav.push()` represents client state. Browser
+Back/Forward changes history but cannot infer how an island maps the URL back to
+signals or stores. The helper reports the current `URL`, native `PopStateEvent`,
+and history state without adding route matching or data loading.
+
+Navigation behavior:
+
+- reactive anchor props remain reactive after `Link` renders
+- same-document hash links retain native target scrolling unless `onNavigate`
+  or `scroll` explicitly takes ownership
+- relative URLs follow `document.baseURI`
+- cross-origin `navigate()` calls use full document navigation
+- replace navigation preserves existing `history.state` unless `state` is set
+- rejected async `onNavigate` callbacks log the error and fall back to a full
+  document navigation
+
 Available exports:
 
 - `Link`
 - `navigate()`, `navigateTo()`, `documentNavigate()`, `refreshCurrentPath()`
-- `captureScroll()`, `restoreScroll()`, `startViewTransition()`
-- `LinkNavigateEvent`, `LinkProps`, `EnhancedNavigateOptions`, `NavigationScrollMode`, `ScrollSnapshot`
+- `captureScroll()`, `restoreScroll()`, `listenPopState()`, `startViewTransition()`
+- `LinkNavigateEvent`, `LinkProps`, `EnhancedNavigateOptions`, `NavigationScrollMode`, `PopStateNavigationEvent`, `ScrollSnapshot`
 
 Use `data-scroll-preserve="stable-key"` on scroll containers that should keep
 their scroll position across enhanced navigation.

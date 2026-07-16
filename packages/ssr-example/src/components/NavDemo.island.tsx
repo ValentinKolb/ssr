@@ -1,5 +1,5 @@
-import { Link, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
-import { createMemo, createSignal, For } from "solid-js";
+import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { createMemo, createSignal, For, onCleanup, onMount } from "solid-js";
 
 type View = "alpha" | "beta";
 
@@ -22,14 +22,28 @@ export default function NavDemo(props: Props) {
     })),
   );
 
+  onMount(() => {
+    onCleanup(
+      listenPopState(({ url }) => {
+        const nextView = url.searchParams.get("view");
+        if (isView(nextView)) setView(nextView);
+      }),
+    );
+  });
+
   const openView = (nav: LinkNavigateEvent) => {
     const nextView = nav.url.searchParams.get("view");
     if (!isView(nextView)) {
       nav.fallback();
       return;
     }
+    const changed = nextView !== view();
     setView(nextView);
-    nav.replaceWith(`/nav-demo?view=${nextView}`, { scroll: "preserve" });
+    if (!changed) {
+      nav.replaceWith(`/nav-demo?view=${nextView}`, { scroll: "preserve" });
+      return;
+    }
+    nav.push(`/nav-demo?view=${nextView}`, { scroll: "preserve" });
   };
 
   return (
@@ -52,7 +66,6 @@ export default function NavDemo(props: Props) {
             <div class="flex gap-4 mb-4">
               <Link
                 href="/nav-demo?view=alpha"
-                replace
                 scroll="preserve"
                 onNavigate={openView}
                 class={`border border-neutral-700 px-4 py-2 hover:bg-neutral-900 hover:text-white ${view() === "alpha" ? "text-white bg-neutral-900" : "text-neutral-400"}`}
@@ -61,7 +74,6 @@ export default function NavDemo(props: Props) {
               </Link>
               <Link
                 href="/nav-demo?view=beta"
-                replace
                 scroll="preserve"
                 onNavigate={openView}
                 class={`border border-neutral-700 px-4 py-2 hover:bg-neutral-900 hover:text-white ${view() === "beta" ? "text-white bg-neutral-900" : "text-neutral-400"}`}

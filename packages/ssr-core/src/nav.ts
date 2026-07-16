@@ -4,7 +4,7 @@
  * This is not a router. Links remain real anchors and apps decide whether an
  * enhanced click can update client state before committing browser history.
  */
-import type { JSX } from "solid-js";
+import { mergeProps, splitProps, type JSX } from "solid-js";
 import { createDynamic } from "solid-js/web";
 
 type AnchorProps = JSX.AnchorHTMLAttributes<HTMLAnchorElement>;
@@ -24,7 +24,14 @@ export type EnhancedNavigateOptions = {
   replace?: boolean;
   scroll?: NavigationScrollMode;
   scrollSnapshot?: ScrollSnapshot;
+  state?: unknown;
   viewTransition?: boolean;
+};
+
+export type PopStateNavigationEvent = {
+  event: PopStateEvent;
+  url: URL;
+  state: unknown;
 };
 
 export type LinkNavigateEvent = {
@@ -120,6 +127,24 @@ export const restoreScroll = (snapshot: ScrollSnapshot, options: { window?: bool
 };
 
 /**
+ * Subscribes to browser Back/Forward navigation.
+ *
+ * The application remains responsible for reconciling its island state with
+ * the URL. This helper intentionally does not perform route matching.
+ */
+export const listenPopState = (handler: (navigation: PopStateNavigationEvent) => void): (() => void) => {
+  const listener = (event: PopStateEvent) => {
+    handler({ event, url: new URL(window.location.href), state: event.state });
+  };
+
+  window.addEventListener("popstate", listener);
+  return () => window.removeEventListener("popstate", listener);
+};
+
+const resolveNavigationUrl = (href: string): URL =>
+  new URL(href, document.baseURI || window.location.href);
+
+/**
  * Updates browser history without a document reload.
  *
  * Use this after the current island has already updated its UI or when it is
@@ -127,14 +152,22 @@ export const restoreScroll = (snapshot: ScrollSnapshot, options: { window?: bool
  * data, or re-render server pages.
  */
 export const navigate = (href: string, options: EnhancedNavigateOptions = {}): void => {
+  const url = resolveNavigationUrl(href);
+  if (url.origin !== window.location.origin) {
+    documentNavigate(url.href, { replace: options.replace });
+    return;
+  }
+
   const scroll = options.scroll ?? "top";
   const snapshot = scroll === "manual" ? null : (options.scrollSnapshot ?? captureScroll());
-  const url = new URL(href, window.location.href);
   const target = `${url.pathname}${url.search}${url.hash}`;
 
   const commit = () => {
-    if (options.replace) window.history.replaceState(null, "", target);
-    else window.history.pushState(null, "", target);
+    const hasExplicitState = Object.prototype.hasOwnProperty.call(options, "state");
+    const state = hasExplicitState ? options.state : options.replace ? window.history.state : null;
+
+    if (options.replace) window.history.replaceState(state, "", target);
+    else window.history.pushState(state, "", target);
 
     if (!snapshot) return;
     restoreRegionScroll(snapshot);
@@ -163,67 +196,113 @@ const shouldEnhanceClick = (event: MouseEvent, anchor: HTMLAnchorElement): boole
   if (anchor.target && anchor.target !== "_self") return false;
   if (anchor.hasAttribute("download")) return false;
 
-  const url = new URL(anchor.href, window.location.href);
+  const url = new URL(anchor.href);
   return url.origin === window.location.origin;
+};
+
+const isSameDocumentHash = (url: URL): boolean => {
+  const current = new URL(window.location.href);
+  return url.hash.length > 0 && url.pathname === current.pathname && url.search === current.search;
 };
 
 const callUserClick = (handler: LinkProps["onClick"], event: MouseEvent, anchor: HTMLAnchorElement): void => {
   if (!handler) return;
-  if (typeof handler === "function") {
-    handler(event as MouseEvent & { currentTarget: HTMLAnchorElement; target: Element });
+  const typedEvent = event as MouseEvent & { currentTarget: HTMLAnchorElement; target: Element };
+
+  if (Array.isArray(handler)) {
+    handler[0].call(anchor, handler[1], typedEvent);
     return;
   }
-  (handler as unknown as EventListenerObject).handleEvent(event);
+
+  if (typeof handler === "function") {
+    handler.call(anchor, typedEvent);
+  }
 };
 
 /**
  * SSR-safe anchor with opt-in progressive navigation.
  */
 export function Link(props: LinkProps) {
-  const anchorProps = () => {
-    const { href: _href, replace: _replace, scroll: _scroll, onNavigate: _onNavigate, onClick: _onClick, ...rest } = props;
-    return rest;
-  };
+  const [local, anchorProps] = splitProps(props, ["href", "replace", "scroll", "onNavigate", "onClick"]);
 
   const handleClick: JSX.EventHandler<HTMLAnchorElement, MouseEvent> = (event) => {
-    callUserClick(props.onClick, event, event.currentTarget);
+    callUserClick(local.onClick, event, event.currentTarget);
     if (!shouldEnhanceClick(event, event.currentTarget)) return;
 
-    const href = props.href;
-    const url = new URL(href, window.location.href);
-    const scroll = props.scroll ?? "top";
-    const replace = Boolean(props.replace);
+    const href = local.href;
+    const url = new URL(event.currentTarget.href);
+
+    // Preserve native target scrolling unless the application explicitly owns
+    // this hash navigation through onNavigate or a scroll option.
+    if (!local.onNavigate && local.scroll === undefined && isSameDocumentHash(url)) return;
+
+    const scroll = local.scroll ?? "top";
+    const replace = Boolean(local.replace);
     const scrollSnapshot = captureScroll();
 
     event.preventDefault();
 
-    if (!props.onNavigate) {
-      navigate(href, { replace, scroll, scrollSnapshot });
+    if (!local.onNavigate) {
+      navigate(url.href, { replace, scroll, scrollSnapshot });
       return;
     }
 
-    startViewTransition(() =>
-      props.onNavigate!({
-        event,
-        href,
-        url,
-        replace,
-        scroll,
-        push: (nextHref = href, options = {}) =>
-          navigate(nextHref, { replace: false, scroll, scrollSnapshot, viewTransition: false, ...options }),
-        replaceWith: (nextHref = href, options = {}) =>
-          navigate(nextHref, { replace: true, scroll, scrollSnapshot, viewTransition: false, ...options }),
-        fallback: (nextHref = href) => documentNavigate(nextHref, { replace }),
-        scrollSnapshot,
-        captureScroll,
-        restoreScroll,
-      }),
-    );
+    let navigationOutcome: "none" | "history" | "document" = "none";
+    const runNavigation = async () => {
+      try {
+        await local.onNavigate!({
+          event,
+          href,
+          url,
+          replace,
+          scroll,
+          push: (nextHref = url.href, options = {}) => {
+            navigate(nextHref, {
+              ...options,
+              replace: false,
+              scroll: options.scroll ?? scroll,
+              scrollSnapshot: options.scrollSnapshot ?? scrollSnapshot,
+              viewTransition: false,
+            });
+            navigationOutcome = "history";
+          },
+          replaceWith: (nextHref = url.href, options = {}) => {
+            navigate(nextHref, {
+              ...options,
+              replace: true,
+              scroll: options.scroll ?? scroll,
+              scrollSnapshot: options.scrollSnapshot ?? scrollSnapshot,
+              viewTransition: false,
+            });
+            navigationOutcome = "history";
+          },
+          fallback: (nextHref = url.href) => {
+            documentNavigate(resolveNavigationUrl(nextHref).href, { replace });
+            navigationOutcome = "document";
+          },
+          scrollSnapshot,
+          captureScroll,
+          restoreScroll,
+        });
+      } catch (error) {
+        console.error("[@valentinkolb/ssr/nav] onNavigate failed; falling back to document navigation.", error);
+        if (navigationOutcome === "document") return;
+        const historyCommitted = navigationOutcome === "history";
+        const fallbackHref = historyCommitted ? window.location.href : url.href;
+        documentNavigate(fallbackHref, { replace: historyCommitted || replace });
+      }
+    };
+
+    startViewTransition(runNavigation);
   };
 
-  return createDynamic(() => "a", {
-    ...anchorProps(),
-    href: props.href,
-    onClick: handleClick,
-  });
+  return createDynamic(
+    () => "a",
+    mergeProps(anchorProps, {
+      get href() {
+        return local.href;
+      },
+      onClick: handleClick,
+    }),
+  );
 }

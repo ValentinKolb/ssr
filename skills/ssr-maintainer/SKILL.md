@@ -69,10 +69,10 @@ When adding or changing an adapter:
 
 ## Transform Guidance
 
-`src/transform.ts` has two important phases:
+`src/transform.ts` performs two operations in one Babel pass:
 
-- SSR-only wrapper pass for island/client imports and JSX usages
-- Solid compilation pass with `generate: "ssr"` or `"dom"`
+- the SSR-only wrapper plugin replaces island/client JSX usages
+- TypeScript stripping and Solid compilation run as presets with `generate: "ssr"` or `"dom"`
 
 When modifying it:
 
@@ -94,4 +94,6 @@ When changing `src/nav.ts`:
 - keep top-level code SSR-safe; browser globals may be used only inside event handlers or helper calls
 - keep `Link` rendering a real `<a href>` during SSR
 - preserve normal browser behavior for modifier keys, non-left clicks, downloads, and external targets
-- test history push/replace, scroll snapshot behavior, and SSR anchor output
+- keep `nav.push()` state reconciliation explicit through `listenPopState()`; do not add route matching
+- test history push/replace, Back/Forward reconciliation, hash links, async fallbacks, reactive props, Solid bound handlers, scroll snapshots, and SSR anchor output
+- run both `test/unit` and the browser-conditioned `test/browser` suite

@@ -210,12 +210,21 @@ For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` 
 Use `@valentinkolb/ssr/nav` only when an island/client component needs progressive same-origin navigation without a document reload.
 
 ```tsx
-import { Link, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { onCleanup, onMount } from "solid-js";
+import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+
+onMount(() => {
+  onCleanup(
+    listenPopState(({ url }) => {
+      setTab(url.searchParams.get("tab") ?? "alpha");
+    }),
+  );
+});
 
 const openTab = (nav: LinkNavigateEvent) => {
   const tab = nav.url.searchParams.get("tab") ?? "alpha";
   setTab(tab);
-  nav.replaceWith(`/demo?tab=${tab}`, { scroll: "preserve" });
+  nav.push(`/demo?tab=${tab}`, { scroll: "preserve", state: { tab } });
 };
 
 <Link href="/demo?tab=beta" scroll="preserve" onNavigate={openTab}>
@@ -228,6 +237,11 @@ Rules:
 - `Link` is a real SSR-safe `<a href>` and works without JavaScript as a normal link
 - this is not a router; do not expect route matching, nested routes, loaders, or server re-rendering
 - with `onNavigate`, update island state or load data first, then call `nav.push()`, `nav.replaceWith()`, or `nav.fallback()`
+- when using `nav.push()`, subscribe with `listenPopState()` and restore island state from the URL on Back/Forward
+- rejected async `onNavigate` callbacks fall back to full document navigation
+- same-document hash links retain native scrolling unless `onNavigate` or `scroll` takes ownership
+- relative links follow `document.baseURI`; cross-origin `navigate()` calls use full document navigation
+- replace navigation preserves existing `history.state` unless an explicit `state` option is provided
 - use `data-scroll-preserve="stable-key"` for scroll containers that should keep position
 - do not pass `onNavigate` from a server page into an island prop; define navigation callbacks inside the island/client component
 
@@ -252,5 +266,6 @@ Rules:
 - returning direct JSX from `ssr()` is invalid; return `() => <Page />`
 - passing callbacks or event handlers as island/client props fails because props must be serialized
 - treating `@valentinkolb/ssr/nav` as a full router leads to stale server data; it only enhances anchors after client state is handled
+- using `nav.push()` without reconciling `popstate` leaves island state stale after Back/Forward; use `listenPopState()`
 - importing server-only modules into islands or client components can break browser bundling
 - named exports for islands/clients are not supported
