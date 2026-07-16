@@ -1,13 +1,12 @@
 /**
  * Elysia adapter - provides Elysia plugin with SSR routes.
- * Uses staticPlugin for serving island chunks.
+ * Uses the shared BunFile-backed asset response path.
  */
 import { Elysia } from "elysia";
-import { staticPlugin } from "@elysiajs/static";
 import type { SsrConfig } from "../index";
 import {
+  createAssetResponse,
   getSsrDir,
-  getCacheHeaders,
   createReloadResponse,
   notFound,
 } from "./utils";
@@ -29,13 +28,9 @@ export const routes = (config: SsrConfig) => {
   const ssrDir = getSsrDir(config);
 
   return new Elysia({ name: "ssr" })
-    .use(
-      staticPlugin({
-        assets: ssrDir,
-        prefix: ssrPath,
-        headers: { "Cache-Control": getCacheHeaders(dev) },
-      }),
-    )
     .get(`${ssrPath}/_reload`, () => (dev ? createReloadResponse() : notFound()))
-    .get(`${ssrPath}/_ping`, () => (dev ? new Response("ok") : notFound()));
+    .get(`${ssrPath}/_ping`, () => (dev ? new Response("ok") : notFound()))
+    .get(`${ssrPath}/*`, ({ request, params }) =>
+      createAssetResponse(request, ssrDir, params["*"], dev),
+    );
 };

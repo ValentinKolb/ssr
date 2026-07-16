@@ -314,6 +314,42 @@ describe("routes", () => {
 
       expect(response.status).toBe(200);
       expect(await response.text()).toContain("export default 1");
+      expect(response.headers.get("Cache-Control")).toBe("no-cache");
+      expect(response.headers.get("ETag")).toMatch(/^W\/"/);
+      expect(response.headers.get("Last-Modified")).not.toBeNull();
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  test("revalidates stable entries and caches hashed chunks", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "ssr-hono-cache-"));
+    try {
+      const ssrDir = join(rootDir, "_ssr");
+      mkdirSync(ssrDir, { recursive: true });
+      writeFileSync(join(ssrDir, "island.js"), "export default 1;");
+      writeFileSync(join(ssrDir, "chunk-abc123.js"), "export const shared = 1;");
+      writeFileSync(join(ssrDir, "island.js.map"), '{"version":3}');
+
+      const app = routes({ dev: true, rootDir, basePath: "", ssrPath: "/_ssr" });
+      const first = await app.request("/island.js");
+      const etag = first.headers.get("ETag")!;
+      const unchanged = await app.request("/island.js", { headers: { "If-None-Match": etag } });
+      const chunk = await app.request("/chunk-abc123.js");
+      const sourceMap = await app.request("/island.js.map");
+
+      expect(unchanged.status).toBe(304);
+      expect(await unchanged.text()).toBe("");
+      expect(chunk.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+      expect(sourceMap.status).toBe(200);
+      expect(sourceMap.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+      expect(sourceMap.headers.get("Cache-Control")).toBe("no-cache");
+
+      writeFileSync(join(ssrDir, "island.js"), "export default 200;");
+      const changed = await app.request("/island.js", { headers: { "If-None-Match": etag } });
+      expect(changed.status).toBe(200);
+      expect(await changed.text()).toContain("export default 200");
+      expect(changed.headers.get("ETag")).not.toBe(etag);
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }

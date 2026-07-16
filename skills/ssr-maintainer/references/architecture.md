@@ -17,15 +17,20 @@
 3. Fail fast on collisions
 4. Run one `Bun.build()` pass with virtual island entrypoints and `splitting: true`
 5. Generate per-entry hydration code that imports the component, `solid-js/web`, and `seroval`
-6. In production only, run `dedupeSharedChunkExports()` on shared chunks
+6. After a successful build, remove obsolete framework-generated JavaScript and source-map files
+7. In production only, run `dedupeSharedChunkExports()` on shared chunks
 
 Output stays on disk in `_ssr/`:
 
 ```text
 _ssr/
 ├── <12-char-id>.js
-└── chunk-<hash>.js
+├── <12-char-id>.js.map        # development, linked by default
+├── chunk-<hash>.js
+└── chunk-<hash>.js.map        # development, when emitted by Bun
 ```
+
+Production builds do not emit source maps. Development builds use linked maps by default so initial JavaScript responses do not carry the map payload. `devSourcemap` can opt into `"inline"` or `"none"` when required.
 
 ## Transform Pipeline
 
@@ -70,6 +75,7 @@ Shared helpers live in `src/adapter/utils.ts`:
 | `toSsrPath()` | derive the public SSR asset path |
 | `getSsrDir()` | derive the filesystem `_ssr` directory |
 | `getCacheHeaders()` | dev/prod cache policy |
+| `createAssetResponse()` | validate and stream BunFile-backed JavaScript/source-map responses |
 | `safePath()` | reject path traversal |
 | `createReloadStream()` / `createReloadResponse()` | SSE live reload |
 
@@ -77,6 +83,7 @@ Shared helpers live in `src/adapter/utils.ts`:
 
 - `createSSRHandler(html)` returns the `ssr()` tuple helper
 - page handlers return a synchronous render function or a `Response`
+- assets are returned as `Bun.file`-backed responses without eager `arrayBuffer()` reads
 - `routes(config)` is intentionally relative and is mounted by the host app
 - when using `basePath`, the feature app is typically mounted under `config.basePath`, while SSR routes remain mounted inside that app at `/_ssr`
 - v0.9.0 intentionally rejects direct JSX handler results; this keeps JSX evaluation inside `renderToString()` so Solid SSR context is available
@@ -88,8 +95,15 @@ Shared helpers live in `src/adapter/utils.ts`:
 
 ### Elysia adapter
 
-- uses `@elysiajs/static`
+- uses the same BunFile-backed response helper as Hono and Bun
 - must use `config.ssrPath` as the public prefix
+
+### Asset caching
+
+- production JavaScript and source maps are immutable
+- development `chunk-<hash>.js` files are immutable because their names are content-addressed
+- stable development entries and maps use `no-cache`, `ETag`, and `Last-Modified`
+- conditional development requests return `304` without reading the file body
 
 ## File Map
 

@@ -31,6 +31,8 @@ describe("buildIslands()", () => {
     const workspaceRoot = makeTempRoot();
     const outdir = join(workspaceRoot, "_ssr");
     const islandPath = join(workspaceRoot, "cloud-core", "src", "Counter.island.tsx");
+    writeTempFile(join(outdir, "chunk-stale.js"), "stale");
+    writeTempFile(join(outdir, "keep.txt"), "unmanaged");
 
     // Simulate monorepo layout where entrypoint package differs from island package.
     writeTempFile(
@@ -53,14 +55,44 @@ describe("buildIslands()", () => {
 
     const id = islandIdFromFile(islandPath, workspaceRoot);
     const entryChunk = join(outdir, `${id}.js`);
+    const sourceMap = `${entryChunk}.map`;
 
     expect(existsSync(entryChunk)).toBe(true);
+    expect(existsSync(sourceMap)).toBe(true);
+    expect(existsSync(join(outdir, "chunk-stale.js"))).toBe(false);
+    expect(existsSync(join(outdir, "keep.txt"))).toBe(true);
+    const entrySource = readFileSync(entryChunk, "utf8");
+    expect(entrySource).toContain(`//# sourceMappingURL=${id}.js.map`);
+    expect(entrySource).not.toContain("sourceMappingURL=data:");
 
     const app = honoRoutes({ dev: true, rootDir: workspaceRoot, basePath: "", ssrPath: "/_ssr" });
     const response = await app.request(`/${id}.js`);
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript");
+  });
+
+  test("supports explicit inline development source maps", async () => {
+    const workspaceRoot = makeTempRoot();
+    const outdir = join(workspaceRoot, "_ssr");
+    writeTempFile(
+      join(workspaceRoot, "Counter.island.tsx"),
+      `export default function Counter() { return <button>Count</button>; }`,
+    );
+
+    await buildIslands({
+      pattern: "**/*.{island,client}.tsx",
+      cwd: workspaceRoot,
+      outdir,
+      verbose: false,
+      dev: true,
+      devSourcemap: "inline",
+      external: ["solid-js/web", "seroval"],
+    });
+
+    const [entryChunk] = [...new Bun.Glob("*.js").scanSync({ cwd: outdir, absolute: true })];
+    expect(await Bun.file(entryChunk!).text()).toContain("sourceMappingURL=data:");
+    expect(existsSync(`${entryChunk}.map`)).toBe(false);
   });
 
   test("resolves alias island imports in Bun.build plugin and emits matching island chunk", async () => {

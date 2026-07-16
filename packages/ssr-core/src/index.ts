@@ -9,7 +9,7 @@ import type { JSX } from "solid-js";
 import type { BunPlugin } from "bun";
 import { statSync } from "fs";
 import { transform } from "./transform";
-import { buildIslands } from "./build";
+import { buildIslands, type DevSourcemap } from "./build";
 import { join, dirname, resolve } from "path";
 import { resolveIslandImport } from "./island-resolve";
 import { normalizeBasePath, toSsrPath } from "./adapter/utils";
@@ -51,6 +51,8 @@ export type SsrOptions<T extends object = object> = {
   basePath?: string;
   /** Modules to exclude from the island bundle (passed to Bun.build) */
   external?: string[];
+  /** Development island sourcemaps (default: "linked") */
+  devSourcemap?: DevSourcemap;
   /** HTML template function (optional, has default) */
   template?: (
     ctx: {
@@ -112,7 +114,15 @@ export type SsrResult<T extends object> = {
  * ```
  */
 export const createConfig = <T extends object = object>(options: SsrOptions<T> = {}): SsrResult<T> => {
-  const { dev = false, verbose, external, template, rootDir: rootDirOption, basePath: basePathOption } = options;
+  const {
+    dev = false,
+    verbose,
+    external,
+    devSourcemap = "linked",
+    template,
+    rootDir: rootDirOption,
+    basePath: basePathOption,
+  } = options;
   const rootDir = resolve(rootDirOption ?? process.cwd());
   const basePath = normalizeBasePath(basePathOption);
   const ssrPath = toSsrPath(basePath);
@@ -200,6 +210,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
             cwd: rootDir,
             verbose: verbose ?? !dev,
             dev,
+            devSourcemap,
             external,
           });
         };

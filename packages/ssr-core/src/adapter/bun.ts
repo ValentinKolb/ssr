@@ -4,11 +4,9 @@
  */
 import type { SsrConfig } from "../index";
 import {
+  createAssetResponse,
   getSsrDir,
-  getCacheHeaders,
   createReloadResponse,
-  notFound,
-  safePath,
 } from "./utils";
 
 type RouteHandler = (req: Request) => Response | Promise<Response>;
@@ -39,21 +37,14 @@ export const routes = (config: SsrConfig): Routes => {
       }
     : {};
 
+  const serveAsset: RouteHandler = (req) => {
+    const filename = new URL(req.url).pathname.split("/").pop()!;
+    return createAssetResponse(req, ssrDir, filename, dev);
+  };
+
   return {
     ...devRoutes,
-
-    [`${ssrPath}/*.js`]: async (req) => {
-      const filename = new URL(req.url).pathname.split("/").pop()!;
-      const path = safePath(ssrDir, filename);
-      if (!path) return notFound();
-      const file = Bun.file(path);
-      if (!(await file.exists())) return notFound();
-      return new Response(file, {
-        headers: {
-          "Content-Type": file.type,
-          "Cache-Control": getCacheHeaders(dev),
-        },
-      });
-    },
+    [`${ssrPath}/*.js`]: serveAsset,
+    [`${ssrPath}/*.js.map`]: serveAsset,
   };
 };

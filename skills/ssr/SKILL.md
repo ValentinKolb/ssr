@@ -161,6 +161,7 @@ createConfig({
   rootDir?: string;
   basePath?: string;
   external?: string[];
+  devSourcemap?: "none" | "linked" | "inline";
   template?: ({ body, scripts, ...custom }) => string | Promise<string>;
 })
 ```
@@ -169,6 +170,8 @@ Notes:
 
 - set `rootDir` when your config and island files live in different workspace packages
 - `basePath` moves SSR asset URLs and dev endpoints under that public prefix
+- development builds use linked source maps by default; use `devSourcemap: "inline"` only for tools that require embedded maps
+- stable development entries and source maps revalidate; content-hashed chunks and all production assets use immutable caching
 - `html()` accepts a synchronous render function: `html(() => <Page />)`
 - `html()` always injects framework assets, including the SSR loader and wrapper styling
 

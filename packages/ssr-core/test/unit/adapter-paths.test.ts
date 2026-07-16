@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, rmSync } from "fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { routes as bunRoutes } from "../../src/adapter/bun";
@@ -16,14 +16,31 @@ describe("adapter SSR paths", () => {
     const routeMap = bunRoutes({ dev: true, basePath: "/docs", ssrPath: "/docs/_ssr" });
 
     expect(Object.keys(routeMap)).toEqual(
-      expect.arrayContaining(["/docs/_ssr/*.js", "/docs/_ssr/_ping", "/docs/_ssr/_reload"]),
+      expect.arrayContaining(["/docs/_ssr/*.js", "/docs/_ssr/*.js.map", "/docs/_ssr/_ping", "/docs/_ssr/_reload"]),
     );
   });
 
   test("bun adapter keeps the root SSR path by default", () => {
     const routeMap = bunRoutes({ dev: true, basePath: "", ssrPath: "/_ssr" });
 
-    expect(Object.keys(routeMap)).toEqual(expect.arrayContaining(["/_ssr/*.js", "/_ssr/_ping", "/_ssr/_reload"]));
+    expect(Object.keys(routeMap)).toEqual(
+      expect.arrayContaining(["/_ssr/*.js", "/_ssr/*.js.map", "/_ssr/_ping", "/_ssr/_reload"]),
+    );
+  });
+
+  test("bun adapter serves source maps through the shared asset policy", async () => {
+    const rootDir = makeTempRoot();
+    try {
+      writeFileSync(join(rootDir, "_ssr", "island.js.map"), '{"version":3}');
+      const routeMap = bunRoutes({ dev: true, rootDir, basePath: "", ssrPath: "/_ssr" });
+      const response = await routeMap["/_ssr/*.js.map"]!(new Request("http://localhost/_ssr/island.js.map"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+      expect(response.headers.get("Cache-Control")).toBe("no-cache");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
   });
 
   test("elysia adapter exposes dev endpoints under the configured SSR path", async () => {
@@ -47,6 +64,21 @@ describe("adapter SSR paths", () => {
 
       expect(response.status).toBe(200);
       expect(await response.text()).toBe("ok");
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  test("elysia adapter serves source maps through the shared asset policy", async () => {
+    const rootDir = makeTempRoot();
+    try {
+      writeFileSync(join(rootDir, "_ssr", "island.js.map"), '{"version":3}');
+      const app = elysiaRoutes({ dev: true, rootDir, basePath: "", ssrPath: "/_ssr" });
+      const response = await app.fetch(new Request("http://localhost/_ssr/island.js.map"));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+      expect(response.headers.get("Cache-Control")).toBe("no-cache");
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }

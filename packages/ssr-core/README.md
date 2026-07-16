@@ -65,7 +65,7 @@ bun add @valentinkolb/ssr solid-js
 # choose adapter deps you need
 bun add hono
 # or
-bun add elysia @elysiajs/static
+bun add elysia
 ```
 
 ## Required TypeScript settings
@@ -268,6 +268,7 @@ createConfig({
   rootDir?: string;      // default: process.cwd()
   basePath?: string;     // default: "", example: "/docs"
   external?: string[];   // passed to Bun.build for island bundle
+  devSourcemap?: "none" | "linked" | "inline"; // default: "linked"
   template?: ({ body, scripts, ...custom }) => string | Promise<string>;
 })
 ```
@@ -276,7 +277,9 @@ createConfig({
 
 - `rootDir` is important in monorepos where server entrypoint and island files live in different packages.
 - `basePath` moves SSR assets and dev endpoints under that prefix, e.g. `/docs/_ssr`.
+- Development builds emit linked source maps by default. Use `"inline"` only when a tool requires embedded maps, or `"none"` to disable them.
 - In production, hydration imports include a build timestamp query (`?v=...`) for cache busting.
+- All adapters stream island assets from `Bun.file`. Production assets and content-hashed development chunks are immutable; stable development entries and source maps use validators for inexpensive freshness checks.
 
 ## Microfrontend mount example
 

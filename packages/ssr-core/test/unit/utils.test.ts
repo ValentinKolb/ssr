@@ -27,8 +27,13 @@ describe("safePath()", () => {
 });
 
 describe("getCacheHeaders()", () => {
-  test("should return no-cache in dev mode", () => {
-    expect(getCacheHeaders(true)).toBe("no-cache");
+  test("should revalidate stable entries and source maps in dev mode", () => {
+    expect(getCacheHeaders(true, "island.js")).toBe("no-cache");
+    expect(getCacheHeaders(true, "island.js.map")).toBe("no-cache");
+  });
+
+  test("should cache content-hashed chunks in dev mode", () => {
+    expect(getCacheHeaders(true, "chunk-abc123.js")).toBe("public, max-age=31536000, immutable");
   });
 
   test("should return immutable cache in prod mode", () => {

@@ -4,10 +4,13 @@
  */
 import { relative, resolve } from "path";
 import { Glob } from "bun";
+import { unlink } from "fs/promises";
 import { transform } from "./transform";
 import { ISLAND_ID_LENGTH, islandIdFromFile, toStableKey } from "./island-id";
 
 type ComponentType = "island" | "client";
+
+export type DevSourcemap = "none" | "linked" | "inline";
 
 const getComponentType = (path: string): ComponentType => (path.includes(".client.") ? "client" : "island");
 
@@ -15,6 +18,21 @@ const getSelector = (type: ComponentType, id: string) =>
   type === "island" ? `solid-island[data-id="${id}"]` : `solid-client[data-id="${id}"]`;
 
 const fmt = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`);
+const GENERATED_ASSET = /^(?:[a-f0-9]{12}|chunk-[a-z0-9]+)\.js(?:\.map)?$/i;
+
+const removeStaleBuildAssets = async (outdir: string, outputs: readonly Bun.BuildArtifact[]): Promise<number> => {
+  const current = new Set(outputs.map((output) => resolve(output.path)));
+  let removed = 0;
+
+  for await (const file of new Glob("*.js*").scan({ cwd: outdir, absolute: true })) {
+    const filename = file.slice(file.lastIndexOf("/") + 1);
+    if (!GENERATED_ASSET.test(filename) || current.has(resolve(file))) continue;
+    await unlink(file);
+    removed += 1;
+  }
+
+  return removed;
+};
 
 /**
  * Workaround for Bun bundler bug: duplicate export statements in shared chunks
@@ -73,9 +91,10 @@ export const buildIslands = async (options: {
   cwd: string;
   verbose: boolean;
   dev?: boolean;
+  devSourcemap?: DevSourcemap;
   external?: string[];
 }): Promise<void> => {
-  const { pattern, outdir, cwd, verbose, dev = false, external } = options;
+  const { pattern, outdir, cwd, verbose, dev = false, devSourcemap = "linked", external } = options;
   const resolvedCwd = resolve(cwd);
 
   const totalStart = performance.now();
@@ -137,7 +156,7 @@ export const buildIslands = async (options: {
     external,
     minify: !dev,
     splitting: true,
-    sourcemap: dev ? "inline" : "none",
+    sourcemap: dev ? devSourcemap : "none",
     plugins: [
       {
         name: "solid-islands",
@@ -181,10 +200,15 @@ export const buildIslands = async (options: {
     ],
   });
 
-  if (result.success && !dev) {
-    await dedupeSharedChunkExports(outdir, verbose);
-  } else if (result.success && dev && verbose) {
-    console.log("Skipped shared-chunk export rewrite in dev mode.");
+  if (result.success) {
+    const removed = await removeStaleBuildAssets(outdir, result.outputs);
+    if (verbose && removed > 0) console.log(`Removed ${removed} stale build asset(s).`);
+
+    if (!dev) {
+      await dedupeSharedChunkExports(outdir, verbose);
+    } else if (verbose) {
+      console.log("Skipped shared-chunk export rewrite in dev mode.");
+    }
   }
 
   if (verbose) {

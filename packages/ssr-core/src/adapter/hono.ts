@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { createFactory } from "hono/factory";
 import type { Context, Env, Handler, MiddlewareHandler, TypedResponse } from "hono";
 import type { SsrConfig, HtmlFn, RenderFn } from "../index";
-import { getSsrDir, getCacheHeaders, createReloadResponse, safePath } from "./utils";
+import { createAssetResponse, getSsrDir, createReloadResponse } from "./utils";
 
 // ============================================================================
 // Types
@@ -176,19 +176,10 @@ export const routes = (config: SsrConfig) => {
     app.get("/_ping", (c) => c.text("ok"));
   }
 
-  // Serve island chunks
-  app.get("/:filename{.+\\.js$}", async (c) => {
-    const path = safePath(ssrDir, c.req.param("filename"));
-    if (!path) return c.notFound();
-    const file = Bun.file(path);
-    if (!(await file.exists())) return c.notFound();
-    return c.body(await file.arrayBuffer(), {
-      headers: {
-        "Content-Type": "application/javascript",
-        "Cache-Control": getCacheHeaders(dev),
-      },
-    });
-  });
+  const serveAsset = (c: Context) => createAssetResponse(c.req.raw, ssrDir, c.req.param("filename"), dev);
+
+  app.get("/:filename{.+\\.js$}", serveAsset);
+  app.get("/:filename{.+\\.js\\.map$}", serveAsset);
 
   return app;
 };
