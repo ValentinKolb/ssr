@@ -34,17 +34,18 @@ Production builds do not emit source maps. Development builds use linked maps by
 
 ## Transform Pipeline
 
-`transform()` in `src/transform.ts` runs two Babel passes.
+`transform()` in `src/transform.ts` runs one Babel transform pass.
 
-### Pass 1: Wrapper injection in SSR mode
+### SSR wrapper plugin
 
 - collects `.island` and `.client` default imports
 - wraps JSX usages in `<solid-island>` or `<solid-client>`
 - injects `data-id`, `data-props`, and `data-file` in dev
 - keeps SSR children for islands, emits empty wrappers for clients
 - injects `serialize` from `seroval`
+- refreshes Babel bindings after client wrappers remove their original JSX usage
 
-### Pass 2: Solid compilation
+### TypeScript and Solid presets
 
 - strips types with `@babel/preset-typescript`
 - compiles Solid with `babel-preset-solid`
@@ -77,6 +78,7 @@ Shared helpers live in `src/adapter/utils.ts`:
 | `getCacheHeaders()` | dev/prod cache policy |
 | `createAssetResponse()` | validate and stream BunFile-backed JavaScript/source-map responses |
 | `safePath()` | reject path traversal |
+| `getReloadId()` / `createPingResponse()` | identify the current dev-server generation |
 | `createReloadStream()` / `createReloadResponse()` | SSE live reload |
 
 ### Hono adapter
@@ -104,6 +106,16 @@ Shared helpers live in `src/adapter/utils.ts`:
 - development `chunk-<hash>.js` files are immutable because their names are content-addressed
 - stable development entries and maps use `no-cache`, `ETag`, and `Last-Modified`
 - conditional development requests return `304` without reading the file body
+
+### Development reload
+
+- each server process generates one reload ID and exposes it through the initial SSE event and ping response
+- a fresh document publishes its current reload ID so stale tabs reload without making the fresh document loop
+- Web Locks elect one visible SSE owner per origin and SSR path; unsupported browsers retain visibility-scoped per-tab streams
+- `visibilitychange` and `pagehide` release streams, retries, pending lock requests, and heartbeat work
+- `pageshow` restores participation after a back-forward cache restore
+- reconnect polling is single-flight, abortable, and uses bounded exponential backoff
+- Bun, Hono, and Elysia forward the request abort signal so disconnected streams release server heartbeat timers
 
 ## File Map
 

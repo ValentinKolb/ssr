@@ -16,8 +16,10 @@ Published as `@valentinkolb/ssr`.
 - optional progressive navigation helpers via `@valentinkolb/ssr/nav`
 - monorepo support via `rootDir`
 - microfrontend support via `basePath`
+- linked development source maps and cache-aware asset delivery
+- visibility-aware development reload with one cross-tab SSE owner when Web Locks are available
 
-See the full package docs in [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
+See the full package docs in [packages/ssr-core/README.md](packages/ssr-core/README.md).
 
 ### `packages/ssr-example`
 
@@ -26,7 +28,7 @@ Reference Hono app using the local workspace package.
 - uses `createSSRHandler`
 - includes islands, client-only components, API calls, and an opt-in nav demo
 
-See [packages/ssr-example/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-example/README.md).
+See [packages/ssr-example/README.md](packages/ssr-example/README.md).
 
 ## Example
 
@@ -48,7 +50,7 @@ export default new Hono()
   .get("/", ...Home);
 ```
 
-Pages return a render function so Solid JSX is evaluated inside the SSR renderer. For installation, adapter setup, `createConfig()` options, `basePath`, and the v0.9.0 migration note, see [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md).
+Pages return a render function so Solid JSX is evaluated inside the SSR renderer. For installation, adapter setup, `createConfig()` options, `basePath`, and the v0.9.0 migration note, see [packages/ssr-core/README.md](packages/ssr-core/README.md).
 
 ## Development
 
@@ -79,6 +81,6 @@ bunx skills add https://github.com/ValentinKolb/ssr --skill '*'
 
 ## Notes
 
-- Framework documentation: [packages/ssr-core/README.md](/Users/valentinkolb/Git/ssr/packages/ssr-core/README.md)
-- Example app: [packages/ssr-example](/Users/valentinkolb/Git/ssr/packages/ssr-example)
-- LLM notes: [packages/ssr-core/llms.txt](/Users/valentinkolb/Git/ssr/packages/ssr-core/llms.txt)
+- Framework documentation: [packages/ssr-core/README.md](packages/ssr-core/README.md)
+- Example app: [packages/ssr-example](packages/ssr-example)
+- LLM notes: [packages/ssr-core/llms.txt](packages/ssr-core/llms.txt)

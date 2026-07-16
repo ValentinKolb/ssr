@@ -18,7 +18,7 @@ Monorepo root:
   - production hydration imports use `?v=<buildTimestamp>` cache busting
 
 - `src/transform.ts`
-  - Babel transform for SSR/DOM
+  - one Babel transform pass for wrapper injection, TypeScript stripping, and Solid SSR/DOM compilation
   - wraps island/client component usage with `solid-island` / `solid-client`
 
 - `src/island-id.ts`
@@ -29,10 +29,12 @@ Monorepo root:
   - scans island/client files
   - bundles browser chunks into `_ssr`
   - hard-fails on ID collisions
+  - emits linked development source maps by default and removes stale generated assets after successful builds
 
 - `src/adapter/*`
   - Bun, Hono, Elysia adapters
   - serve built chunks from `config.ssrPath`
+  - stream `Bun.file` assets with immutable production caching and validator-based freshness for stable development files
   - the dev reload client uses Web Locks to elect one visible cross-tab SSE owner per SSR path, falls back to visibility-scoped per-tab streams, and resumes after `pageshow`
 
 - `src/nav.ts`

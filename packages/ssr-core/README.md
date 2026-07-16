@@ -20,7 +20,7 @@ Current source size in this repo (`packages/ssr-core/src`):
 
 | Component | Lines | Raw | Gzipped |
 | --- | ---: | ---: | ---: |
-| Core (`index`, `transform`, `build`, island ID + resolver) | ~689 | 23.8 KB | 7.2 KB |
+| Core (`index`, `transform`, `build`, island ID + resolver) | ~750 | 26.2 KB | 8.3 KB |
 | Dev client (overlay + reload, dev only) | ~421 | 11.9 KB | 3.5 KB |
 | Adapters (`bun`, `hono`, `elysia`, shared utils) | ~465 | 14.4 KB | 4.8 KB |
 
@@ -56,6 +56,9 @@ SPA routing.
 - Public path mounting via `basePath` for microfrontends
 - Stable file-path-based island IDs (collision-safe across workspace packages)
 - Production chunk cache busting (`/_ssr/*.js?v=<buildTimestamp>`)
+- Linked development source maps and validator-aware asset delivery
+- Stale generated island assets removed after successful builds
+- Visibility-aware development reload with cross-tab SSE coordination
 
 ## Install
 
@@ -237,7 +240,7 @@ Navigation behavior:
 Available exports:
 
 - `Link`
-- `navigate()`, `navigateTo()`, `documentNavigate()`, `refreshCurrentPath()`
+- `navigate()`, `navigateTo()`, `documentNavigate()`, `currentPathWithQuery()`, `refreshCurrentPath()`
 - `captureScroll()`, `restoreScroll()`, `listenPopState()`, `startViewTransition()`
 - `LinkNavigateEvent`, `LinkProps`, `EnhancedNavigateOptions`, `NavigationScrollMode`, `PopStateNavigationEvent`, `ScrollSnapshot`
 

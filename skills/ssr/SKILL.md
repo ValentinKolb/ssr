@@ -1,6 +1,6 @@
 ---
 name: ssr
-description: Build apps with @valentinkolb/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, opt-in @valentinkolb/ssr/nav progressive navigation, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, serialization, client re-render behavior, or enhanced same-origin links.
+description: Build apps with @valentinkolb/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, opt-in @valentinkolb/ssr/nav progressive navigation, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, source maps, caching, dev reload connections, serialization, client re-render behavior, or enhanced same-origin links.
 ---
 
 # @valentinkolb/ssr User Guide
@@ -204,6 +204,19 @@ The important invariant is that `config.basePath` must match the host mount path
 - Elysia: `@valentinkolb/ssr/elysia`
 
 For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` does not require extra manual route wiring.
+
+## Development Reload
+
+With `dev: true`, the framework injects its development overlay and watches the
+adapter's `_reload` endpoint for server restarts. No additional setup is needed
+beyond mounting the adapter routes.
+
+- hidden tabs and page-cached documents close their reload stream and retry work
+- browsers with Web Locks keep one visible SSE owner per origin and SSR path
+- leadership transfers when the owner becomes hidden or leaves the page
+- `pageshow` restores participation after a back-forward cache restore
+- browsers without Web Locks use visibility-scoped per-tab streams as a compatibility fallback
+- disabling **Auto reload** in the overlay closes the stream for that tab
 
 ## Optional `@valentinkolb/ssr/nav`
 
