@@ -122,6 +122,10 @@ const componentWrapperPlugin = (filename: string, rootDir: string, dev: boolean)
             path.skip();
           },
         });
+
+        // Client wrappers remove their original JSX usage. Refresh bindings so
+        // later presets can discard imports that became unused in this pass.
+        programPath.scope.crawl();
       },
     },
   };
@@ -138,19 +142,10 @@ export const transform = async (
   dev: boolean = false,
   rootDir: string = process.cwd(),
 ): Promise<string> => {
-  let code = source;
-
-  if (mode === "ssr") {
-    const result = await transformAsync(code, {
-      filename,
-      parserOpts: { plugins: ["jsx", "typescript"] },
-      plugins: [() => componentWrapperPlugin(filename, rootDir, dev)],
-    });
-    code = result?.code || code;
-  }
-
-  const result = await transformAsync(code, {
+  const result = await transformAsync(source, {
     filename,
+    parserOpts: mode === "ssr" ? { plugins: ["jsx", "typescript"] } : undefined,
+    plugins: mode === "ssr" ? [() => componentWrapperPlugin(filename, rootDir, dev)] : [],
     presets: [
       [tsPreset, {}],
       [solidPreset, { generate: mode, hydratable: false }],

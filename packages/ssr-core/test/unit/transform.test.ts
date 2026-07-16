@@ -44,6 +44,7 @@ describe("transform() - Island wrapping in SSR mode", () => {
     expect(result).toContain("solid-client");
     expect(result).toContain("data-id");
     expect(result).toContain("data-props");
+    expect(result).not.toContain('import Widget from "./Widget.client"');
   });
 
   test("should NOT wrap regular imports", async () => {
@@ -304,7 +305,9 @@ describe("transform() - Edge cases", () => {
     const result = await transform(input, "/test/Page.tsx", "ssr");
 
     expect(result).toContain("solid-island");
-    // Should not error on TypeScript syntax
+    expect(result).toContain('import Counter from "./Counter.island"');
+    expect(result).not.toContain("type Props");
+    expect(result).not.toContain(": Props");
   });
 
   test("should not wrap islands imported but not used", async () => {
