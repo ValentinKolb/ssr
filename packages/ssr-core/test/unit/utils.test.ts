@@ -1,6 +1,50 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, spyOn } from "bun:test";
 import { join } from "path";
-import { safePath, getCacheHeaders, getSsrDir, normalizeBasePath, toSsrPath } from "../../src/adapter/utils";
+import {
+  createReloadStream,
+  createPingResponse,
+  getReloadId,
+  safePath,
+  getCacheHeaders,
+  getSsrDir,
+  normalizeBasePath,
+  toSsrPath,
+} from "../../src/adapter/utils";
+
+describe("createReloadStream()", () => {
+  test("sends the initial event and stops its heartbeat when canceled", async () => {
+    const clearIntervalSpy = spyOn(globalThis, "clearInterval");
+    const reader = createReloadStream().getReader();
+
+    const first = await reader.read();
+    await reader.cancel();
+
+    expect(new TextDecoder().decode(first.value)).toBe(`: connected\ndata: ${getReloadId()}\n\n`);
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    clearIntervalSpy.mockRestore();
+  });
+
+  test("closes immediately when the request is aborted", async () => {
+    const abortController = new AbortController();
+    const clearIntervalSpy = spyOn(globalThis, "clearInterval");
+    const reader = createReloadStream(abortController.signal).getReader();
+
+    await reader.read();
+    abortController.abort();
+    const closed = await reader.read();
+
+    expect(closed.done).toBe(true);
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    clearIntervalSpy.mockRestore();
+  });
+
+  test("uses the same reload ID for ping and stream handshakes", async () => {
+    const response = createPingResponse();
+
+    expect(await response.text()).toBe("ok");
+    expect(response.headers.get("X-SSR-Reload-ID")).toBe(getReloadId());
+  });
+});
 
 describe("safePath()", () => {
   const base = "/app/_ssr";

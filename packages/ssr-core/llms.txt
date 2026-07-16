@@ -33,6 +33,7 @@ Monorepo root:
 - `src/adapter/*`
   - Bun, Hono, Elysia adapters
   - serve built chunks from `config.ssrPath`
+  - the dev reload client uses Web Locks to elect one visible cross-tab SSE owner per SSR path, falls back to visibility-scoped per-tab streams, and resumes after `pageshow`
 
 - `src/nav.ts`
   - optional `@valentinkolb/ssr/nav` subpath

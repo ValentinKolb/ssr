@@ -5,6 +5,7 @@
 import type { SsrConfig } from "../index";
 import {
   createAssetResponse,
+  createPingResponse,
   getSsrDir,
   createReloadResponse,
 } from "./utils";
@@ -32,8 +33,8 @@ export const routes = (config: SsrConfig): Routes => {
 
   const devRoutes: Routes = dev
     ? {
-        [`${ssrPath}/_reload`]: () => createReloadResponse(),
-        [`${ssrPath}/_ping`]: () => new Response("ok"),
+        [`${ssrPath}/_reload`]: (req) => createReloadResponse(req.signal),
+        [`${ssrPath}/_ping`]: () => createPingResponse(),
       }
     : {};
 

@@ -66,6 +66,8 @@ When adding or changing an adapter:
 4. Dev mode must expose reload and ping endpoints on the same SSR public path.
 5. Always use `safePath()` for requested asset filenames.
 6. Add/update tests for both default root behavior and `basePath` behavior when relevant.
+7. Keep dev reload SSE visibility-scoped and cross-tab coordinated: hidden or page-cached tabs must close streams and retries, Web Locks elect one visible stream owner per origin and SSR path, browsers without Web Locks retain a visibility-scoped per-tab fallback, and `pageshow` restores participation.
+8. Keep reconnect polling single-flight with bounded backoff, and clean server heartbeat timers on stream cancel or request abort.
 
 ## Transform Guidance
 

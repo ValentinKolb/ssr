@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { createFactory } from "hono/factory";
 import type { Context, Env, Handler, MiddlewareHandler, TypedResponse } from "hono";
 import type { SsrConfig, HtmlFn, RenderFn } from "../index";
-import { createAssetResponse, getSsrDir, createReloadResponse } from "./utils";
+import { createAssetResponse, createPingResponse, getSsrDir, createReloadResponse } from "./utils";
 
 // ============================================================================
 // Types
@@ -172,8 +172,8 @@ export const routes = (config: SsrConfig) => {
 
   // Dev mode endpoints
   if (dev) {
-    app.get("/_reload", () => createReloadResponse());
-    app.get("/_ping", (c) => c.text("ok"));
+    app.get("/_reload", (c) => createReloadResponse(c.req.raw.signal));
+    app.get("/_ping", () => createPingResponse());
   }
 
   const serveAsset = (c: Context) => createAssetResponse(c.req.raw, ssrDir, c.req.param("filename"), dev);

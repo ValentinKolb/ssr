@@ -271,6 +271,7 @@ describe("routes", () => {
     const pingResponse = await app.request("/_ping");
     expect(pingResponse.status).toBe(200);
     expect(await pingResponse.text()).toBe("ok");
+    expect(pingResponse.headers.get("X-SSR-Reload-ID")).not.toBeNull();
 
     const reloadResponse = await app.request("/_reload");
     expect(reloadResponse.status).toBe(200);

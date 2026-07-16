@@ -21,8 +21,8 @@ Current source size in this repo (`packages/ssr-core/src`):
 | Component | Lines | Raw | Gzipped |
 | --- | ---: | ---: | ---: |
 | Core (`index`, `transform`, `build`, island ID + resolver) | ~689 | 23.8 KB | 7.2 KB |
-| Dev client (overlay + reload, dev only) | ~211 | 6.1 KB | 2.0 KB |
-| Adapters (`bun`, `hono`, `elysia`, shared utils) | ~355 | 10.4 KB | 3.3 KB |
+| Dev client (overlay + reload, dev only) | ~421 | 11.9 KB | 3.5 KB |
+| Adapters (`bun`, `hono`, `elysia`, shared utils) | ~465 | 14.4 KB | 4.8 KB |
 
 Important: these sizes describe framework source code that runs at build time and on the server.
 The browser receives only:
@@ -357,6 +357,12 @@ It can:
 - auto-reload on server restart
 - highlight island/client boundaries
 - show source filenames for wrapped components
+
+In browsers with Web Locks support, auto-reload elects one visible tab per
+origin and SSR path to hold the SSE connection. Hidden tabs suspend reload work,
+leadership transfers automatically, and cached pages resume safely after a
+back-forward cache restore. Browsers without Web Locks retain visibility-scoped
+per-tab connections as a compatibility fallback.
 
 ## Limitations
 

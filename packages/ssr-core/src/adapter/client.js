@@ -14,11 +14,31 @@ if (!window.__ssr_reload) {
       position: "bl",
     };
 
-    const load = () => ({
-      ...defaults,
-      ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
-    });
-    const save = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    const readStorage = (key) => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    };
+    const writeStorage = (key, value) => {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        // Dev tools still work when storage is unavailable.
+      }
+    };
+    const load = () => {
+      try {
+        return {
+          ...defaults,
+          ...JSON.parse(readStorage(STORAGE_KEY) || "{}"),
+        };
+      } catch {
+        return { ...defaults };
+      }
+    };
+    const save = (s) => writeStorage(STORAGE_KEY, JSON.stringify(s));
     let settings = load();
 
     // Highlight Styles
@@ -152,9 +172,22 @@ if (!window.__ssr_reload) {
     bind("_ssr_pos", "position", applyPosition);
 
     // Live Reload (SSE)
-    let es, reconnectInterval, animationInterval;
+    const reloadId = globalThis.__SSR_CONFIG?.reloadId;
+    const reloadIdKey = `${STORAGE_KEY}:reload-id`;
+    const reloadLockName = `${STORAGE_KEY}:reload-lock`;
+    let es, retryTimer, retryController, animationInterval;
+    let lockController, releaseLock;
+    let retryAttempt = 0;
+    let retryGeneration = 0;
+    let ownsLock = false;
+    let pageActive = true;
+    let reloadRequested = false;
     const spinFrames = ["[ / ]", "[ – ]", "[ \\ ]", "[ | ]"];
     let spinIndex = 0;
+
+    // A fresh document already represents this server generation. Publishing
+    // it first wakes stale tabs without making the fresh document reload.
+    if (reloadId) writeStorage(reloadIdKey, reloadId);
 
     const stopAnimation = () => {
       clearInterval(animationInterval);
@@ -169,45 +202,220 @@ if (!window.__ssr_reload) {
       }, 150);
     };
 
-    const stop = () => {
-      es?.close();
+    const shouldParticipate = () =>
+      pageActive &&
+      !reloadRequested &&
+      settings.autoReload &&
+      document.visibilityState === "visible";
+    const canConnect = () => shouldParticipate() && ownsLock;
+
+    const closeSource = () => {
+      const source = es;
       es = null;
-      clearInterval(reconnectInterval);
-      reconnectInterval = null;
+      source?.close();
+    };
+
+    const cancelRetry = () => {
+      retryGeneration += 1;
+      clearTimeout(retryTimer);
+      retryTimer = null;
+      const controller = retryController;
+      retryController = null;
+      controller?.abort();
+    };
+
+    const stopConnection = () => {
+      closeSource();
+      cancelRetry();
+      retryAttempt = 0;
       stopAnimation();
+      badge.innerText = "[ssr]";
+    };
+
+    const releaseLeadership = () => {
+      const pendingLock = lockController;
+      lockController = null;
+      pendingLock?.abort();
+
+      const release = releaseLock;
+      releaseLock = null;
+      ownsLock = false;
+      release?.();
+      stopConnection();
+    };
+
+    const requestReload = () => {
+      if (reloadRequested) return;
+      reloadRequested = true;
+      releaseLeadership();
+      location.reload();
+    };
+
+    const acceptReloadId = (nextReloadId) => {
+      if (!nextReloadId) return;
+      writeStorage(reloadIdKey, nextReloadId);
+      if (reloadId && nextReloadId !== reloadId) requestReload();
+    };
+
+    const retryDelay = () =>
+      Math.min(2_000, 300 * 2 ** Math.min(retryAttempt, 3));
+
+    const scheduleRetry = () => {
+      if (!canConnect() || retryTimer || retryController) return;
+
+      const generation = retryGeneration;
+      retryTimer = setTimeout(async () => {
+        retryTimer = null;
+        if (generation !== retryGeneration || !canConnect()) return;
+
+        const controller = new AbortController();
+        retryController = controller;
+        try {
+          const response = await fetch(`${ssrPath}/_ping`, {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          if (response.ok && canConnect()) {
+            acceptReloadId(response.headers.get("X-SSR-Reload-ID"));
+            if (!reloadRequested) requestReload();
+            return;
+          }
+        } catch {
+          // A stopped or unavailable dev server is expected during reload.
+        } finally {
+          if (retryController === controller) retryController = null;
+        }
+
+        if (generation !== retryGeneration || !canConnect()) return;
+        retryAttempt += 1;
+        scheduleRetry();
+      }, retryDelay());
+    };
+
+    const startRetry = () => {
+      if (!canConnect()) return;
+      startAnimation();
+      scheduleRetry();
     };
 
     const start = () => {
-      if (es) return;
+      if (!canConnect() || es || retryTimer || retryController) return;
+
+      let source;
       try {
-        es = new EventSource(`${ssrPath}/_reload`);
+        source = new EventSource(`${ssrPath}/_reload`);
+        es = source;
         stopAnimation();
         badge.innerText = "[ssr]";
       } catch {
+        startRetry();
         return;
       }
 
-      es.onerror = (e) => {
-        e.preventDefault();
-        stop();
-        startAnimation();
-        if (!settings.autoReload) return;
-        reconnectInterval = setInterval(() => {
-          fetch(`${ssrPath}/_ping`)
-            .then((r) => r.ok && location.reload())
-            .catch(() => {});
-        }, 300);
+      source.onopen = () => {
+        if (es !== source) return;
+        retryAttempt = 0;
+        stopAnimation();
+        badge.innerText = "[ssr]";
+      };
+
+      source.onmessage = (event) => {
+        if (es !== source) return;
+        acceptReloadId(event.data);
+      };
+
+      source.onerror = (event) => {
+        if (es !== source) return;
+        event.preventDefault();
+        closeSource();
+        retryAttempt = 0;
+        startRetry();
       };
     };
 
-    if (settings.autoReload) start();
+    const requestLeadership = () => {
+      if (!shouldParticipate()) return;
+      if (ownsLock) {
+        start();
+        return;
+      }
+      if (lockController) return;
+
+      if (!navigator.locks?.request) {
+        ownsLock = true;
+        start();
+        return;
+      }
+
+      const controller = new AbortController();
+      lockController = controller;
+      void navigator.locks
+        .request(
+          reloadLockName,
+          { mode: "exclusive", signal: controller.signal },
+          async () => {
+            if (lockController === controller) lockController = null;
+            if (controller.signal.aborted || !shouldParticipate()) return;
+
+            ownsLock = true;
+            start();
+            await new Promise((resolve) => {
+              releaseLock = resolve;
+            });
+            releaseLock = null;
+            ownsLock = false;
+            stopConnection();
+          },
+        )
+        .catch((error) => {
+          if (lockController === controller) lockController = null;
+          if (error?.name === "AbortError" || !shouldParticipate()) return;
+
+          // If Web Locks is unavailable at runtime, retain per-tab behavior.
+          ownsLock = true;
+          start();
+        });
+    };
+
+    const syncConnection = () => {
+      const knownReloadId = readStorage(reloadIdKey);
+      if (
+        shouldParticipate() &&
+        reloadId &&
+        knownReloadId &&
+        knownReloadId !== reloadId
+      ) {
+        requestReload();
+        return;
+      }
+
+      if (shouldParticipate()) requestLeadership();
+      else releaseLeadership();
+    };
+
+    syncConnection();
 
     panel.querySelector("#_ssr_reload").onchange = (e) => {
       settings.autoReload = e.target.checked;
       save(settings);
-      settings.autoReload ? start() : stop();
+      syncConnection();
     };
 
-    window.addEventListener("pagehide", stop);
+    document.addEventListener("visibilitychange", syncConnection);
+    window.addEventListener("storage", (event) => {
+      if (event.key !== reloadIdKey || !event.newValue) return;
+      if (reloadId && event.newValue !== reloadId && shouldParticipate()) {
+        requestReload();
+      }
+    });
+    window.addEventListener("pagehide", () => {
+      pageActive = false;
+      releaseLeadership();
+    });
+    window.addEventListener("pageshow", () => {
+      pageActive = true;
+      reloadRequested = false;
+      syncConnection();
+    });
   })();
 }

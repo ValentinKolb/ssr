@@ -12,7 +12,7 @@ import { transform } from "./transform";
 import { buildIslands, type DevSourcemap } from "./build";
 import { join, dirname, resolve } from "path";
 import { resolveIslandImport } from "./island-resolve";
-import { normalizeBasePath, toSsrPath } from "./adapter/utils";
+import { getReloadId, normalizeBasePath, toSsrPath } from "./adapter/utils";
 // @ts-ignore - Bun text import
 import devClientCode from "./adapter/client.js" with { type: "text" };
 
@@ -160,7 +160,7 @@ export const createConfig = <T extends object = object>(options: SsrOptions<T> =
 
   // Hydration script - dynamically loads island/client bundles based on DOM
   const hydrationScript = `<script type="module">const p=${JSON.stringify(ssrPath)};const v=${JSON.stringify(buildVersion)};document.querySelectorAll('solid-island,solid-client').forEach(e=>import(p+'/'+e.dataset.id+'.js'+(v?'?v='+v:'')));</script>`;
-  const devConfigScript = `<script>globalThis.__SSR_CONFIG=${JSON.stringify({ ssrPath })}</script>`;
+  const devConfigScript = `<script>globalThis.__SSR_CONFIG=${JSON.stringify({ ssrPath, reloadId: getReloadId() })}</script>`;
 
   // HTML renderer
   const html: HtmlFn<T> = async (render, opts = {} as T) => {

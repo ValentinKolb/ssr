@@ -27,7 +27,9 @@ describe("createConfig() cache busting", () => {
     const output = await response.text();
 
     expect(output).toContain('const p="/docs/_ssr"');
-    expect(output).toContain('globalThis.__SSR_CONFIG={"ssrPath":"/docs/_ssr"}');
+    expect(output).toMatch(
+      /globalThis\.__SSR_CONFIG=\{"ssrPath":"\/docs\/_ssr","reloadId":"[0-9a-f-]{36}"\}/,
+    );
   });
 
   test("normalizes trailing slashes in basePath", async () => {

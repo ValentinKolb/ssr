@@ -116,28 +116,63 @@ export const SSE_HEADERS = {
   Connection: "keep-alive",
 } as const;
 
+const reloadId = crypto.randomUUID();
+const reloadConnected = new TextEncoder().encode(`: connected\ndata: ${reloadId}\n\n`);
+const reloadPing = new TextEncoder().encode(": ping\n\n");
+
+export const getReloadId = (): string => reloadId;
+
+export const createPingResponse = (): Response =>
+  new Response("ok", { headers: { "X-SSR-Reload-ID": reloadId } });
+
 /**
  * Creates a Server-Sent Events stream for live reload
  */
-export const createReloadStream = (): ReadableStream =>
-  new ReadableStream({
+export const createReloadStream = (signal?: AbortSignal): ReadableStream<Uint8Array> => {
+  let interval: ReturnType<typeof setInterval> | undefined;
+  let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+  const handleAbort = () => {
+    stopHeartbeat();
+    try {
+      streamController?.close();
+    } catch {
+      // The consumer may already have canceled the stream.
+    }
+  };
+  const stopHeartbeat = () => {
+    if (interval === undefined) return;
+    clearInterval(interval);
+    interval = undefined;
+    signal?.removeEventListener("abort", handleAbort);
+  };
+
+  return new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode(": connected\n\n"));
-      const interval = setInterval(() => {
+      streamController = controller;
+      if (signal?.aborted) {
+        controller.close();
+        return;
+      }
+
+      signal?.addEventListener("abort", handleAbort, { once: true });
+      controller.enqueue(reloadConnected);
+      interval = setInterval(() => {
         try {
-          controller.enqueue(new TextEncoder().encode(": ping\n\n"));
+          controller.enqueue(reloadPing);
         } catch {
-          clearInterval(interval);
+          stopHeartbeat();
         }
       }, 5000);
     },
+    cancel: stopHeartbeat,
   });
+};
 
 /**
  * Creates a Response for the SSE reload endpoint
  */
-export const createReloadResponse = (): Response =>
-  new Response(createReloadStream(), { headers: SSE_HEADERS });
+export const createReloadResponse = (signal?: AbortSignal): Response =>
+  new Response(createReloadStream(signal), { headers: SSE_HEADERS });
 
 /**
  * 404 Response
