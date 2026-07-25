@@ -297,6 +297,20 @@ describe("routes", () => {
     expect(response.status).toBe(404);
   });
 
+  test("rejects asset requests without a filename before file serving", async () => {
+    const assetRoutes = routes({ dev: false, basePath: "", ssrPath: "/_ssr" });
+    const assetHandler = assetRoutes.routes.find(
+      (route) => route.path === "/:filename{.+\\.js$}",
+    )?.handler;
+    expect(assetHandler).toBeDefined();
+
+    const app = new Hono().get("/", assetHandler!);
+    const response = await app.request("/");
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
   test("rejects path traversal attempts", async () => {
     const app = routes({ dev: true, basePath: "", ssrPath: "/_ssr" });
 

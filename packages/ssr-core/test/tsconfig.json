@@ -4,5 +4,5 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": ["./browser/**/*.ts"]
+  "include": ["../src/**/*.ts", "./browser/**/*.ts"]
 }

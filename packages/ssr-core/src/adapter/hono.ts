@@ -176,7 +176,12 @@ export const routes = (config: SsrConfig) => {
     app.get("/_ping", () => createPingResponse());
   }
 
-  const serveAsset = (c: Context) => createAssetResponse(c.req.raw, ssrDir, c.req.param("filename"), dev);
+  const serveAsset = (c: Context) => {
+    const filename = c.req.param("filename");
+    if (!filename) return c.notFound();
+
+    return createAssetResponse(c.req.raw, ssrDir, filename, dev);
+  };
 
   app.get("/:filename{.+\\.js$}", serveAsset);
   app.get("/:filename{.+\\.js\\.map$}", serveAsset);
