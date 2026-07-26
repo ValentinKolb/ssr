@@ -1,4 +1,4 @@
-# @valentinkolb/ssr
+# @k2b/ssr
 
 Minimal SSR + islands framework for SolidJS on Bun.
 
@@ -42,7 +42,7 @@ What is intentionally not included:
 - no build tool wrapper around Bun
 
 Use the libraries you already prefer. This package only handles SSR and islands hydration.
-The optional `@valentinkolb/ssr/nav` subpath provides progressive anchor
+The optional `@k2b/ssr/nav` subpath provides progressive anchor
 enhancement for islands, but it still does not add route matching, loaders, or
 SPA routing.
 
@@ -51,7 +51,7 @@ SPA routing.
 - Small SSR core with Bun-native build/plugin flow
 - Adapters for Bun, Hono, and Elysia
 - Type-safe Hono page helper via `createSSRHandler`
-- Optional progressive navigation helpers via `@valentinkolb/ssr/nav`
+- Optional progressive navigation helpers via `@k2b/ssr/nav`
 - Monorepo support via `rootDir`
 - Public path mounting via `basePath` for microfrontends
 - Stable file-path-based island IDs (collision-safe across workspace packages)
@@ -63,12 +63,28 @@ SPA routing.
 ## Install
 
 ```bash
-bun add @valentinkolb/ssr solid-js
+bun add @k2b/ssr solid-js
 
 # choose adapter deps you need
 bun add hono
 # or
 bun add elysia
+```
+
+### Package scope migration
+
+`@k2b/ssr` is the maintained successor to `@valentinkolb/ssr`. There are no
+framework API changes in the scope migration. Replace the dependency and all
+root or subpath imports:
+
+```ts
+// Before
+import { createConfig } from "@valentinkolb/ssr";
+import { routes } from "@valentinkolb/ssr/hono";
+
+// After
+import { createConfig } from "@k2b/ssr";
+import { routes } from "@k2b/ssr/hono";
 ```
 
 ## Required TypeScript settings
@@ -90,8 +106,8 @@ bun add elysia
 
 ```ts
 // config.ts
-import { createConfig } from "@valentinkolb/ssr";
-import { createSSRHandler, routes } from "@valentinkolb/ssr/hono";
+import { createConfig } from "@k2b/ssr";
+import { createSSRHandler, routes } from "@k2b/ssr/hono";
 
 type PageOptions = {
   title?: string;
@@ -177,18 +193,18 @@ NODE_ENV=development bun --watch --preload=./scripts/preload.ts src/server.ts
 
 ## Adapter imports
 
-- Bun: `@valentinkolb/ssr/bun`
-- Hono: `@valentinkolb/ssr/hono`
-- Elysia: `@valentinkolb/ssr/elysia`
+- Bun: `@k2b/ssr/bun`
+- Hono: `@k2b/ssr/hono`
+- Elysia: `@k2b/ssr/elysia`
 
 ## Optional Navigation Helpers
 
-`@valentinkolb/ssr/nav` is an opt-in browser helper for islands that want to
+`@k2b/ssr/nav` is an opt-in browser helper for islands that want to
 update URL history after they have already updated client state.
 
 ```tsx
 import { createSignal, onCleanup, onMount } from "solid-js";
-import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { Link, listenPopState, type LinkNavigateEvent } from "@k2b/ssr/nav";
 
 export default function Tabs() {
   const [tab, setTab] = createSignal("alpha");

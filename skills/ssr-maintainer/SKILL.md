@@ -1,11 +1,15 @@
 ---
 name: ssr-maintainer
-description: Maintain and develop @valentinkolb/ssr, the SolidJS islands SSR framework for Bun. Use when modifying ssr-core internals such as the build pipeline, Babel transform, island ID system, adapters, hydration/runtime behavior, or tests, and when reviewing framework-level changes in packages/ssr-core.
+description: Maintain and develop @k2b/ssr, the SolidJS islands SSR framework for Bun. Use when modifying ssr-core internals such as the build pipeline, Babel transform, island ID system, adapters, hydration/runtime behavior, or tests, and when reviewing framework-level changes in packages/ssr-core.
 ---
 
-# @valentinkolb/ssr Maintainer Guide
+# @k2b/ssr Maintainer Guide
 
 Use this skill for framework-internal work in `packages/ssr-core`.
+
+The canonical package is `@k2b/ssr` in `k2b-dev/ssr`. The deprecated
+`@valentinkolb/ssr` package is retained only as an installable migration source
+and must not receive new framework releases.
 
 ## Repo Shape
 
@@ -34,7 +38,7 @@ bun run dev:example
 - `_ssr/` is the filesystem artifact boundary; the public HTTP path is derived separately via `config.ssrPath`
 - island IDs must stay stable for the same source path; cache busting uses build timestamps, not content hashes
 - dev overlay/highlighting depends on `data-file` in dev mode and on the wrapper tags remaining present in SSR output
-- `@valentinkolb/ssr/nav` must remain an opt-in progressive navigation helper, not a router with route matching, loaders, or server re-rendering
+- `@k2b/ssr/nav` must remain an opt-in progressive navigation helper, not a router with route matching, loaders, or server re-rendering
 
 ## v0.9.0 Migration Note
 

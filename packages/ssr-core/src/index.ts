@@ -96,7 +96,7 @@ export type SsrResult<T extends object> = {
  * @example
  * ```ts
  * // config.ts
- * import { createConfig } from "@valentinkolb/ssr";
+ * import { createConfig } from "@k2b/ssr";
  *
  * type PageOptions = { title?: string };
  *

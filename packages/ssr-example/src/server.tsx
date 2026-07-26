@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { serveStatic } from "hono/bun";
-import { routes } from "@valentinkolb/ssr/hono";
+import { routes } from "@k2b/ssr/hono";
 import { config, html } from "../config";
 import { api } from "./api";
 import Home from "./components/Home";

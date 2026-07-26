@@ -3,10 +3,10 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "@valentinkolb/ssr",
+      "name": "@k2b/ssr",
     },
     "packages/ssr-core": {
-      "name": "@valentinkolb/ssr",
+      "name": "@k2b/ssr",
       "version": "0.10.0",
       "dependencies": {
         "@babel/core": "^7.29.7",
@@ -37,7 +37,7 @@
     "packages/ssr-example": {
       "name": "ssr-example",
       "dependencies": {
-        "@valentinkolb/ssr": "workspace:*",
+        "@k2b/ssr": "workspace:*",
         "hono": "^4.12.30",
         "seroval": "^1.5.5",
         "solid-js": "^1.9.14",
@@ -141,7 +141,7 @@
 
     "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
-    "@valentinkolb/ssr": ["@valentinkolb/ssr@workspace:packages/ssr-core"],
+    "@k2b/ssr": ["@k2b/ssr@workspace:packages/ssr-core"],
 
     "babel-plugin-jsx-dom-expressions": ["babel-plugin-jsx-dom-expressions@0.40.7", "", { "dependencies": { "@babel/helper-module-imports": "7.18.6", "@babel/plugin-syntax-jsx": "^7.18.6", "@babel/types": "^7.20.7", "html-entities": "2.3.3", "parse5": "^7.1.2" }, "peerDependencies": { "@babel/core": "^7.20.12" } }, "sha512-/O6JWUmjv03OI9lL2ry9bUjpD5S3PclM55RRJEyCdcFZ5W2SEA/59d+l2hNsk3gI6kiWRdRPdOtqZmsQzFN1pQ=="],
 

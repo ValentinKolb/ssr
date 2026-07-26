@@ -46,8 +46,8 @@ type SsrHandlers = [MiddlewareHandler, ...MiddlewareHandler[], Handler];
  * @example
  * ```ts
  * // config.ts
- * import { createConfig } from "@valentinkolb/ssr";
- * import { createSSRHandler, routes } from "@valentinkolb/ssr/adapter/hono";
+ * import { createConfig } from "@k2b/ssr";
+ * import { createSSRHandler, routes } from "@k2b/ssr/hono";
  *
  * type PageOptions = { title?: string; description?: string };
  *
@@ -158,7 +158,7 @@ export const createSSRHandler = <T extends object>(html: HtmlFn<T>) => {
  *
  * @example
  * ```ts
- * import { routes } from "@valentinkolb/ssr/adapter/hono";
+ * import { routes } from "@k2b/ssr/hono";
  * const app = new Hono()
  *   .route("/_ssr", routes(config))
  *   .get("/", () => html(() => <Home />));

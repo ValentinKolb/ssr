@@ -8,7 +8,7 @@
     "start": "NODE_ENV=production bun dist/server.js"
   },
   "dependencies": {
-    "@valentinkolb/ssr": "workspace:*",
+    "@k2b/ssr": "workspace:*",
     "hono": "^4.12.30",
     "seroval": "^1.5.5",
     "solid-js": "^1.9.14"

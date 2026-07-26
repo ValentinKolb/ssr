@@ -285,7 +285,7 @@ export function Link(props: LinkProps) {
           restoreScroll,
         });
       } catch (error) {
-        console.error("[@valentinkolb/ssr/nav] onNavigate failed; falling back to document navigation.", error);
+        console.error("[@k2b/ssr/nav] onNavigate failed; falling back to document navigation.", error);
         if (navigationOutcome === "document") return;
         const historyCommitted = navigationOutcome === "history";
         const fallbackHref = historyCommitted ? window.location.href : url.href;

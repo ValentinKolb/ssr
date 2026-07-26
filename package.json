@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "bun run --filter @valentinkolb/ssr test",
+    "test": "bun run --filter @k2b/ssr test",
     "test:all": "bun run --filter '*' test",
     "dev:example": "bun run --filter ssr-example dev",
     "build:example": "bun run --filter ssr-example build",

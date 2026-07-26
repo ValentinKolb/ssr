@@ -17,7 +17,7 @@ import {
  *
  * @example
  * ```ts
- * import { routes } from "@valentinkolb/ssr/adapter/elysia";
+ * import { routes } from "@k2b/ssr/elysia";
  * new Elysia()
  *   .use(routes(config))
  *   .get("/", () => html(() => <Home />))

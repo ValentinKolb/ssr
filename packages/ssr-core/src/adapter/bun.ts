@@ -18,7 +18,7 @@ type Routes = Record<string, RouteHandler>;
  *
  * @example
  * ```ts
- * import { routes } from "@valentinkolb/ssr/adapter/bun";
+ * import { routes } from "@k2b/ssr/bun";
  * serve({
  *   routes: {
  *     ...routes(config),

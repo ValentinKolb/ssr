@@ -1,8 +1,8 @@
 # ssr-example
 
-Hono-only demo app for `@valentinkolb/ssr` inside this workspace.
+Hono-only demo app for `@k2b/ssr` inside this workspace.
 
-It includes `/nav-demo`, which demonstrates `@valentinkolb/ssr/nav` preserving
+It includes `/nav-demo`, which demonstrates `@k2b/ssr/nav` preserving
 client-side island state and keyed scroll containers while updating browser
 history. The demo also reconciles its active view when the user navigates Back
 or Forward.

@@ -38,7 +38,7 @@ afterEach(() => {
   setUrl("https://example.test/app?view=alpha");
 });
 
-describe("@valentinkolb/ssr/nav browser behavior", () => {
+describe("@k2b/ssr/nav browser behavior", () => {
   test("keeps reactive anchor props synchronized with island state", async () => {
     const [view, setView] = createSignal<"alpha" | "beta">("alpha");
     const alpha = mountLink({
@@ -135,7 +135,7 @@ describe("@valentinkolb/ssr/nav browser behavior", () => {
     await flushPromises();
 
     expect(consoleError).toHaveBeenCalledWith(
-      "[@valentinkolb/ssr/nav] onNavigate failed; falling back to document navigation.",
+      "[@k2b/ssr/nav] onNavigate failed; falling back to document navigation.",
       error,
     );
     expect(window.location.pathname).toBe("/recovery");

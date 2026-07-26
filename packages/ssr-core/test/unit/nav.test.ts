@@ -104,7 +104,7 @@ afterEach(() => {
   globalThis.CSS = originalCss;
 });
 
-describe("@valentinkolb/ssr/nav", () => {
+describe("@k2b/ssr/nav", () => {
   test("renders Link as a real anchor during SSR", () => {
     const html = renderToString(() =>
       Link({

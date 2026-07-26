@@ -1,5 +1,5 @@
-import { createConfig } from "@valentinkolb/ssr";
-import { createSSRHandler, routes } from "@valentinkolb/ssr/hono";
+import { createConfig } from "@k2b/ssr";
+import { createSSRHandler, routes } from "@k2b/ssr/hono";
 
 type PageOptions = {
   title?: string;

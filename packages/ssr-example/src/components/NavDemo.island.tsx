@@ -1,4 +1,4 @@
-import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { Link, listenPopState, type LinkNavigateEvent } from "@k2b/ssr/nav";
 import { createMemo, createSignal, For, onCleanup, onMount } from "solid-js";
 
 type View = "alpha" | "beta";
@@ -60,7 +60,7 @@ export default function NavDemo(props: Props) {
           <div class="border-b border-neutral-800 px-4 py-2 bg-neutral-900">
             <span class="text-neutral-500">subpackage</span>
             <span class="text-neutral-600 mx-2">-</span>
-            <span class="text-neutral-400">@valentinkolb/ssr/nav</span>
+            <span class="text-neutral-400">@k2b/ssr/nav</span>
           </div>
           <div class="p-4">
             <div class="flex gap-4 mb-4">

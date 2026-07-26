@@ -1,5 +1,5 @@
 {
-  "name": "@valentinkolb/ssr",
+  "name": "@k2b/ssr",
   "version": "0.10.0",
   "description": "Minimal SSR framework for SolidJS and Bun",
   "type": "module",
@@ -48,7 +48,7 @@
   "author": "Valentin Kolb",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ValentinKolb/ssr.git"
+    "url": "git+https://github.com/k2b-dev/ssr.git"
   },
   "keywords": [
     "solid",

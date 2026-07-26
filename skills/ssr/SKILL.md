@@ -1,19 +1,23 @@
 ---
 name: ssr
-description: Build apps with @valentinkolb/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, opt-in @valentinkolb/ssr/nav progressive navigation, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, source maps, caching, dev reload connections, serialization, client re-render behavior, or enhanced same-origin links.
+description: Build apps with @k2b/ssr, the minimal SolidJS islands SSR framework for Bun. Use when creating pages, islands, client components, templates, opt-in @k2b/ssr/nav progressive navigation, or adapter setup with Hono, Bun, or Elysia, and when troubleshooting SSR asset loading, source maps, caching, dev reload connections, serialization, client re-render behavior, or enhanced same-origin links.
 ---
 
-# @valentinkolb/ssr User Guide
+# @k2b/ssr User Guide
 
-Use this skill when building with `@valentinkolb/ssr`.
+Use this skill when building with `@k2b/ssr`.
+
+`@k2b/ssr` replaces the deprecated `@valentinkolb/ssr` package. The API and
+subpaths are unchanged; migrate dependencies and imports by replacing the
+scope.
 
 ## Quick Start
 
 ### Config
 
 ```ts
-import { createConfig } from "@valentinkolb/ssr";
-import { createSSRHandler, routes } from "@valentinkolb/ssr/hono";
+import { createConfig } from "@k2b/ssr";
+import { createSSRHandler, routes } from "@k2b/ssr/hono";
 
 type PageOptions = {
   title?: string;
@@ -199,9 +203,9 @@ The important invariant is that `config.basePath` must match the host mount path
 
 ## Other Adapters
 
-- Hono: `@valentinkolb/ssr/hono`
-- Bun: `@valentinkolb/ssr/bun`
-- Elysia: `@valentinkolb/ssr/elysia`
+- Hono: `@k2b/ssr/hono`
+- Bun: `@k2b/ssr/bun`
+- Elysia: `@k2b/ssr/elysia`
 
 For Bun and Elysia, the adapter uses `config.ssrPath` internally, so `basePath` does not require extra manual route wiring.
 
@@ -218,13 +222,13 @@ beyond mounting the adapter routes.
 - browsers without Web Locks use visibility-scoped per-tab streams as a compatibility fallback
 - disabling **Auto reload** in the overlay closes the stream for that tab
 
-## Optional `@valentinkolb/ssr/nav`
+## Optional `@k2b/ssr/nav`
 
-Use `@valentinkolb/ssr/nav` only when an island/client component needs progressive same-origin navigation without a document reload.
+Use `@k2b/ssr/nav` only when an island/client component needs progressive same-origin navigation without a document reload.
 
 ```tsx
 import { onCleanup, onMount } from "solid-js";
-import { Link, listenPopState, type LinkNavigateEvent } from "@valentinkolb/ssr/nav";
+import { Link, listenPopState, type LinkNavigateEvent } from "@k2b/ssr/nav";
 
 onMount(() => {
   onCleanup(
@@ -278,7 +282,7 @@ Rules:
 - placing `${scripts}` outside the rendered HTML body can break client loading
 - returning direct JSX from `ssr()` is invalid; return `() => <Page />`
 - passing callbacks or event handlers as island/client props fails because props must be serialized
-- treating `@valentinkolb/ssr/nav` as a full router leads to stale server data; it only enhances anchors after client state is handled
+- treating `@k2b/ssr/nav` as a full router leads to stale server data; it only enhances anchors after client state is handled
 - using `nav.push()` without reconciling `popstate` leaves island state stale after Back/Forward; use `listenPopState()`
 - importing server-only modules into islands or client components can break browser bundling
 - named exports for islands/clients are not supported

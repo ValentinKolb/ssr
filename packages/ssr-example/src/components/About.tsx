@@ -16,7 +16,7 @@ export default ssr(async (c) => {
           </div>
           <div class="p-4">
             <p class="text-neutral-400">
-              SSR with islands architecture using @valentinkolb/ssr. Pages are
+              SSR with islands architecture using @k2b/ssr. Pages are
               server-rendered as static HTML, interactive components are
               hydrated on the client.
             </p>

@@ -8,18 +8,22 @@ This monorepo contains the framework package and an example app. It focuses on s
 
 ### `packages/ssr-core`
 
-Published as `@valentinkolb/ssr`.
+Published as `@k2b/ssr`.
 
 - SSR core with Bun-native build/plugin flow
 - islands and client-only components via file conventions
 - adapters for Bun, Hono, and Elysia
-- optional progressive navigation helpers via `@valentinkolb/ssr/nav`
+- optional progressive navigation helpers via `@k2b/ssr/nav`
 - monorepo support via `rootDir`
 - microfrontend support via `basePath`
 - linked development source maps and cache-aware asset delivery
 - visibility-aware development reload with one cross-tab SSE owner when Web Locks are available
 
 See the full package docs in [packages/ssr-core/README.md](packages/ssr-core/README.md).
+
+`@k2b/ssr` replaces the deprecated `@valentinkolb/ssr` package. The public API
+and subpaths are unchanged; existing applications only need to replace the
+package scope in dependencies and imports.
 
 ### `packages/ssr-example`
 
@@ -33,8 +37,8 @@ See [packages/ssr-example/README.md](packages/ssr-example/README.md).
 ## Example
 
 ```ts
-import { createConfig } from "@valentinkolb/ssr";
-import { createSSRHandler, routes } from "@valentinkolb/ssr/hono";
+import { createConfig } from "@k2b/ssr";
+import { createSSRHandler, routes } from "@k2b/ssr/hono";
 import { Hono } from "hono";
 
 const { config, html } = createConfig({
@@ -70,13 +74,13 @@ This repository includes agent skills in `skills/`.
 
 Available skills:
 
-- `ssr` for building apps with `@valentinkolb/ssr`
+- `ssr` for building apps with `@k2b/ssr`
 - `ssr-maintainer` for framework-internal work in `ssr-core`
 
 Install them with the Vercel Skills CLI:
 
 ```bash
-bunx skills add https://github.com/ValentinKolb/ssr --skill '*'
+bunx skills add https://github.com/k2b-dev/ssr --skill '*'
 ```
 
 ## Notes
